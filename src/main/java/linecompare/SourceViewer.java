@@ -20,6 +20,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 public class SourceViewer {
@@ -81,6 +82,12 @@ public class SourceViewer {
 			public void handle(ActionEvent event) {
 				zoom /= 1.2;
 				updateZoom();
+			}
+		});
+		imageSel.setOnAction(new EventHandler<ActionEvent>() {
+			public void handle(ActionEvent event) {
+				pageNum = imageSel.getItems().indexOf(imageSel.getValue());
+				loadPage();
 			}
 		});
 
