@@ -18,9 +18,8 @@ import javafx.stage.Window;
 import org.apache.pdfbox.pdmodel.PDDocument;
 
 import java.io.File;
-import java.io.FilenameFilter;
+import java.io.FileFilter;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 
 public class SourceViewer {
@@ -120,7 +119,11 @@ public class SourceViewer {
 		File dir = chooser.showDialog(window);
 		if (dir != null) {
 			imageDirectory = dir;
-			imageFiles = imageDirectory.listFiles(new DotUnderscoreFilter());
+			imageFiles = imageDirectory.listFiles(new FileFilter() {
+				public boolean accept(File pathname) {
+					return !pathname.getName().startsWith(".");
+				}
+			});
 			Arrays.sort(imageFiles);
 			loadPage();
 
@@ -155,13 +158,6 @@ public class SourceViewer {
 			errorMessage = new TextArea("Error opening document");
 		}
 		mainPane.add(errorMessage, 0, 1);
-	}
-
-	private class DotUnderscoreFilter implements FilenameFilter {
-
-		public boolean accept(File dir, String name) {
-			return !name.startsWith("._");
-		}
 	}
 
 	private void loadPage() {

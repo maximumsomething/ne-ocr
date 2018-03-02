@@ -7,16 +7,24 @@ import javafx.stage.Stage;
 public class Main extends Application {
 
 	private SourceViewer sourceViewer;
+	SliceViewer sliceViewer;
 
 	@Override
 	public void start(Stage primaryStage) throws Exception {
-		//Parent root = FXMLLoader.load(getClass().getResource("sample.fxml"));
-		primaryStage.setTitle("Select area");
 
-		sourceViewer = new SourceViewer(primaryStage);
-		primaryStage.setScene(new Scene(sourceViewer.mainPane, 1000, 800));
+		PosRestoreStage sourceStage = new PosRestoreStage();
+		sourceStage.setTitle("Select area");
+		sourceViewer = new SourceViewer(sourceStage);
+		sourceStage.setScene(new Scene(sourceViewer.mainPane, 700, 800));
+		sourceStage.restoreSize("source");
+		sourceStage.show();
 
-		primaryStage.show();
+		PosRestoreStage sliceStage = new PosRestoreStage();
+		sliceStage.setTitle("Book slices");
+		sliceViewer = new SliceViewer(sliceStage);
+		sliceStage.setScene(new Scene(sliceViewer.mainPane, 700, 800));
+		sliceStage.restoreSize("slices");
+		sliceStage.show();
 	}
 
 
