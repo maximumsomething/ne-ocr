@@ -23,6 +23,7 @@ public class SliceManager {
 
 		images = new ArrayList<Image>(files.length);
 		xIndices = new ArrayList<Integer>(files.length);
+		yIndices = new ArrayList<Integer>(files.length);
 
 		for (File i : files) {
 			try {

@@ -6,8 +6,8 @@ import javafx.stage.Stage;
 
 public class Main extends Application {
 
-	private SourceViewer sourceViewer;
-	SliceViewer sliceViewer;
+	public static SourceViewer sourceViewer;
+	public static SliceViewer sliceViewer;
 
 	@Override
 	public void start(Stage primaryStage) throws Exception {
