@@ -5,20 +5,29 @@ import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.prefs.Preferences;
 
 public class SliceViewer {
 	Window window;
 	SliceManager slices = new SliceManager();
+	ArrayList<StackPane> sliceViews = new ArrayList<>();
+
+	// index in all slice-related arrays, such as slices.xIndices and yIndices, and sliceViews
 	int selectedSliceIndex = 0;
+
+	// usually the same as sliceViews.get(selectedSliceIndex)
+	StackPane highlightedSliceView;
 
 	GridPane mainPane = new GridPane();
 	HBox sliceBox = new HBox(1);
@@ -43,8 +52,21 @@ public class SliceViewer {
 
 		Button chooseButton = new Button("Choose Save Location");
 		chooseButton.setOnAction(event -> showChooser());
-		ToggleGroup hvToggle = new ToggleGroup();
 
+		Button deleteButton = new Button("Delete");
+		deleteButton.setOnAction(event -> {
+			slices.images.remove(selectedSliceIndex);
+			slices.xIndices.remove(selectedSliceIndex);
+			slices.yIndices.remove(selectedSliceIndex);
+
+			//highlightedSliceView.parent
+
+			sliceViews.remove(selectedSliceIndex);
+
+			updateSelectedSlice(selectedSliceIndex);
+		});
+
+		ToggleGroup hvToggle = new ToggleGroup();
 		ToggleButton toggleHorizontal = new ToggleButton("Horizontal");
 		toggleHorizontal.setToggleGroup(hvToggle);
 		ToggleButton toggleVertical = new ToggleButton("Vertical");
@@ -56,7 +78,7 @@ public class SliceViewer {
 		});
 		HBox toggleView = new HBox(0, toggleHorizontal, toggleVertical);
 
-		HBox buttonsPane = new HBox(10, toggleView, chooseButton);
+		HBox buttonsPane = new HBox(10, deleteButton, toggleView, chooseButton);
 
 		mainPane.add(buttonsPane, 0, 0);
 		mainPane.add(new ScrollPane(sliceBox), 0, 1);
@@ -78,7 +100,7 @@ public class SliceViewer {
 				for (int i = 0; i != slices.images.size(); ++i) {
 					createSliceView(i);
 				}
-				selectedSliceIndex = slices.images.size() - 1;
+				updateSelectedSlice(slices.images.size() - 1);
 			}
 			catch (IOException e) {
 				new Alert(Alert.AlertType.ERROR, "Could not read directory", ButtonType.OK).show();
@@ -86,23 +108,40 @@ public class SliceViewer {
 		}
 	}
 
-	private void createSliceView(int index) {
-		ImageView image = new ImageView(slices.images.get(index));
+	private void updateSelectedSlice(int index) {
+		if (highlightedSliceView != null) {
+			highlightedSliceView.setStyle("");
+		}
 
+		if (index >= 0 && index < sliceViews.size()) {
+			highlightedSliceView = sliceViews.get(index);
+			highlightedSliceView.setStyle("-fx-border-color: blue; -fx-border-width: 2; -fx-border-style:solid");
+		}
+
+		selectedSliceIndex = index;
+	}
+
+	private void createSliceView(final int index) {
+		StackPane imageView = new StackPane(new ImageView(slices.images.get(index)));
+		sliceViews.add(imageView);
+
+		imageView.addEventFilter(MouseEvent.MOUSE_CLICKED, event -> {
+			updateSelectedSlice(index);
+		});
 
 		int xIndex = slices.xIndices.get(index);
 
-		Node view = null;
+		Node sliceColumn = null;
 
 		if (xIndex < sliceBox.getChildren().size()) {
-			view = sliceBox.getChildren().get(xIndex);
+			sliceColumn = sliceBox.getChildren().get(xIndex);
 		}
 
-		if (view != null && view instanceof VBox) {
-			((VBox) view).getChildren().add(slices.yIndices.get(index), image);
+		if (sliceColumn != null && sliceColumn instanceof VBox) {
+			((VBox) sliceColumn).getChildren().add(slices.yIndices.get(index), imageView);
 		}
 		else {
-			sliceBox.getChildren().add(xIndex, new VBox(1, image));
+			sliceBox.getChildren().add(xIndex, new VBox(1, imageView));
 		}
 	}
 
@@ -131,7 +170,8 @@ public class SliceViewer {
 		slices.xIndices.add(x);
 		slices.yIndices.add(y);
 
-		selectedSliceIndex = slices.images.size() - 1;
-		createSliceView(selectedSliceIndex);
+		int index = slices.images.size() - 1;
+		createSliceView(index);
+		updateSelectedSlice(index);
 	}
 }

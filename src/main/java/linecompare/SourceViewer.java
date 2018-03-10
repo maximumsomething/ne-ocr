@@ -119,30 +119,28 @@ public class SourceViewer {
 		StackPane pageStack = new StackPane(pageView, selectRect);
 		pageStack.setAlignment(Pos.TOP_LEFT);
 
-		pageStack.addEventFilter(MouseEvent.ANY, new EventHandler<MouseEvent>() {
-			public void handle(MouseEvent mouseEvent) {
+		pageStack.addEventFilter(MouseEvent.ANY, mouseEvent -> {
 
-				if (mouseEvent.getEventType() == MouseEvent.MOUSE_PRESSED) {
+			if (mouseEvent.getEventType() == MouseEvent.MOUSE_PRESSED) {
 
-					selectRect.setVisible(true);
-					selectRect.setTranslateX(mouseEvent.getX());
-					selectRect.setTranslateY(mouseEvent.getY());
-				}
-				if (mouseEvent.getEventType() == MouseEvent.MOUSE_DRAGGED && selectRect.isVisible()) {
-					selectRect.setWidth(mouseEvent.getX() - selectRect.getTranslateX());
-					selectRect.setHeight(mouseEvent.getY() - selectRect.getTranslateY());
-				}
-				if (mouseEvent.getEventType() == MouseEvent.MOUSE_RELEASED) {
-					selectRect.setVisible(false);
+				selectRect.setVisible(true);
+				selectRect.setTranslateX(mouseEvent.getX());
+				selectRect.setTranslateY(mouseEvent.getY());
+			}
+			if (mouseEvent.getEventType() == MouseEvent.MOUSE_DRAGGED && selectRect.isVisible()) {
+				selectRect.setWidth(mouseEvent.getX() - selectRect.getTranslateX());
+				selectRect.setHeight(mouseEvent.getY() - selectRect.getTranslateY());
+			}
+			if (mouseEvent.getEventType() == MouseEvent.MOUSE_RELEASED) {
+				selectRect.setVisible(false);
 
-					pushSlice((int) Math.round(selectRect.getTranslateX()),
-							(int) Math.round(selectRect.getTranslateY()),
-							(int) Math.round(selectRect.getWidth()),
-							(int) Math.round(selectRect.getHeight()));
+				pushSlice((int) Math.round(selectRect.getTranslateX()),
+						(int) Math.round(selectRect.getTranslateY()),
+						(int) Math.round(selectRect.getWidth()),
+						(int) Math.round(selectRect.getHeight()));
 
-					selectRect.setWidth(0);
-					selectRect.setHeight(0);
-				}
+				selectRect.setWidth(0);
+				selectRect.setHeight(0);
 			}
 		});
 
