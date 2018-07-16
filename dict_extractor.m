@@ -1,7 +1,7 @@
 clear;
 
-inputFolder = 'first pages without ToC';
-outputFolder = 'Extracted characters';
+inputFolder = 'Working Files/first pages without ToC';
+outputFolder = 'Working Files/Extracted characters';
 
 list = dir(inputFolder);
 
@@ -57,43 +57,40 @@ function [characterImgs, characterBounds] = processPage(filePath)
 	pointRegions = {}; % array of (# of points) x 2 matrices
 	boundingRects = {}; % array of vectors [xLeft, yTop, xRight, yBottom]
 	
+	validMaxima = find(dist(maxima) >= boldnessConstant);
 	
-	for y = 1:height
-		for x = 1:width
-			if maxima(y, x) == 1 && dist(y, x) >= boldnessConstant
+	for i = 1:numel(validMaxima)
+		[y, x] = ind2sub(size(dist), validMaxima(i));
+		
+		foundRegion = false;
+		for j = 1:numel(pointRegions)
+			if sqrt((pointRegions{j}(1, 1) - x) .^ 2 + ...
+					(pointRegions{j}(1, 2) - y) .^ 2) < maxCharacterSize
+				pointRegions{j}(end+1, 1:end) = [x, y];
 				
-				foundRegion = false;
-				for j = 1:numel(pointRegions)
-					if sqrt((pointRegions{j}(1, 1) - x) .^ 2 + ...
-							(pointRegions{j}(1, 2) - y) .^ 2) < maxCharacterSize
-						pointRegions{j}(end+1, 1:end) = [x, y];
-						
-						
-						if x < boundingRects{j}(1)
-							boundingRects{j}(1) = x;
-						end
-						if y < boundingRects{j}(2)
-							boundingRects{j}(2) = y;
-						end
-						if x > boundingRects{j}(3)
-							boundingRects{j}(3) = x;
-						end
-						if y > boundingRects{j}(4)
-							boundingRects{j}(4) = y;
-						end
-						
-						foundRegion = true;
-					end
+				if x < boundingRects{j}(1)
+					boundingRects{j}(1) = x;
 				end
-				if ~foundRegion
-					
-					newElement = zeros(1, 2);
-					newElement(1, 1:end) = [x, y];
-					pointRegions{end+1} = newElement;
-					boundingRects{end+1} = [x, y, x, y];
+				if y < boundingRects{j}(2)
+					boundingRects{j}(2) = y;
 				end
+				if x > boundingRects{j}(3)
+					boundingRects{j}(3) = x;
+				end
+				if y > boundingRects{j}(4)
+					boundingRects{j}(4) = y;
+				end
+				
+				foundRegion = true;
 			end
 		end
+		if ~foundRegion
+			
+			newElement = zeros(1, 2);
+			newElement(1, 1:end) = [x, y];
+			pointRegions{end+1} = newElement;
+			boundingRects{end+1} = [x, y, x, y];
+		end	
 	end
 	
 	
