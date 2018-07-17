@@ -36,8 +36,8 @@ function [characterImgs, characterBounds] = processPage(filePath)
 	boldnessConstant = 6; % pixels. Minimum radius of character stroke.
 	
 	% pixels, of big character being extracted. From any point to any point
-	maxCharacterSize = 300;
-	minCharacterSize = 10;
+	maxCharacterSize = 250;
+	minCharacterSize = 20;
 	characterBorder = 50; % added on all sides
 	
 	inputImage = imread(filePath);
@@ -50,14 +50,14 @@ function [characterImgs, characterBounds] = processPage(filePath)
 	
 	bwimage = imbinarize(rgb2gray(image));
 	dist = bwdist(bwimage);
-	maxima = imregionalmax(dist);
+	%maxima = imregionalmax(dist);
 	
-	[height, width] = size(dist);
+	%[height, width] = size(dist);
 	
 	pointRegions = {}; % array of (# of points) x 2 matrices
 	boundingRects = {}; % array of vectors [xLeft, yTop, xRight, yBottom]
 	
-	validMaxima = find(dist(maxima) >= boldnessConstant);
+	validMaxima = find(dist >= boldnessConstant);
 	
 	for i = 1:numel(validMaxima)
 		[y, x] = ind2sub(size(dist), validMaxima(i));
