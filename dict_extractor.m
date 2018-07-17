@@ -1,11 +1,9 @@
-clear;
-
 inputFolder = 'Working Files/first pages without ToC';
 outputFolder = 'Working Files/Extracted characters';
 
 list = dir(inputFolder);
 
-[numImages, null] = size(list);
+[numImages, ~] = size(list);
 
 
 Page = {};
