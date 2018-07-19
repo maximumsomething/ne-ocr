@@ -1,7 +1,7 @@
 function score = compareChar(bwchar, compareCore)
 	
 	[compareDist, compareClosest] = bwdist(compareCore);
-	[~, charClosest] = bwdist(bwchar);
+	[charDist, charClosest] = bwdist(bwchar);
 	
 	scale = 7.9;
 	translate = [0.0, 0.0]; % after scaling.
@@ -27,9 +27,19 @@ function score = compareChar(bwchar, compareCore)
 		
 		translate = trans1 - trans2*scale;
 	end
+	% score is divided by these to prevent more "cluttered" characters from
+	% getting higher scores.
+	[charPixLen, ~] = size(charPixels);
+	[comparePixLen, ~] = size(comparePixels);
+	
+	score1 = scoreImg(transformPixels(comparePixels,...
+		1/scale, -translate / scale, size(compareCore), size(bwchar)),...
+		 charDist) / charPixLen;
+	
 	finalPixels = transformPixels(...
 		charPixels, scale, translate, size(bwchar), size(compareCore));
-	score = scoreImg(finalPixels, compareDist);
+	score = score1 + scoreImg(finalPixels, compareDist) / comparePixLen;
+	
 	
 	%visualizeResult(finalPixels, compareCore);
 end
@@ -47,6 +57,7 @@ end
 
 function [scale, translation] = compareImgs(...
 		transformedPixels, centroidDist, compareImgClosest)
+	[height, width] = size(compareImgClosest);
 	
 	translation = [0.0, 0.0];
 	closestPixels = zeros(size(transformedPixels));
@@ -57,6 +68,11 @@ function [scale, translation] = compareImgs(...
 		% find closest white pixel of dictionary character
 		[r, c] = ind2sub(size(compareImgClosest), ...
 			roundAndGetPixel(coord, compareImgClosest));
+		
+		%closestIndex = roundAndGetPixel(coord, compareImgClosest) - 1;
+		%r = rem(closestIndex, height) + 1;
+		%c = (closestIndex - r) ./ height + 1;
+			
 		nearestVect = [r, c] - coord;
 		
 		closestPixels(j, 1:2) = [r, c];
@@ -78,6 +94,8 @@ function score = scoreImg(transformedPixels, compareImgDist)
 		[dist, extraDist] = roundAndGetPixel(coord, compareImgDist);
 		score = score + dist + extraDist;
 	end
+	[numPix, ~] = size(transformedPixels);
+	score = score / numPix;
 end
 
 function [pixelVal, extraDist] = roundAndGetPixel(coord, compareImg)
