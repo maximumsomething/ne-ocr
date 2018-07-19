@@ -25,4 +25,8 @@ end
 [scores, indexes] = sort(scores);
 imgNames = imgNames(indexes);
 
+for i = 1:numel(imgNames)
+	fprintf('%s\n', imgNames{i});
+end
+
 

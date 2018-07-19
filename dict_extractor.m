@@ -16,10 +16,13 @@ for i = 1:numImages
 		[imgs, rects] = processPage([inputFolder,'/',filename]);
 		
 		for j = 1:numel(rects)
-			Page{end+1, 1} = filename;
+			filenameParts = strsplit(filename, ',');
+			pageName = filenameParts{1};
+			
+			Page{end+1, 1} = pageName;
 			Rect{end+1, 1} = rects{j};
 			
-			imageFilename = [filename,' - ',num2str(j),'.png'];
+			imageFilename = [pageName,' - ',num2str(j),'.png'];
 			ImgName{end+1, 1} = imageFilename;
 			imwrite(imgs{j}, [outputFolder,'/',imageFilename]);
 		end
