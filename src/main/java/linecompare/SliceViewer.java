@@ -1,8 +1,10 @@
 package linecompare;
 
 import javafx.geometry.Pos;
-import javafx.scene.Node;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
@@ -20,19 +22,15 @@ import java.util.prefs.Preferences;
 
 public class SliceViewer {
 	Window window;
-	SliceManager slices = new SliceManager();
-	ArrayList<StackPane> sliceViews = new ArrayList<>();
+	ArrayList<ArrayList<Slice>> slices = new ArrayList<>();
 
-	// index in all slice-related arrays, such as slices.xIndices and yIndices, and sliceViews
-	int selectedSliceIndex = 0;
-
-	// usually the same as sliceViews.get(selectedSliceIndex)
-	StackPane highlightedSliceView;
+	Slice selectedSlice = null;
 
 	GridPane mainPane = new GridPane();
 	HBox sliceBox = new HBox(1);
 
 	boolean addVertical = false;
+	boolean addAbove = false;
 
 	private Preferences prefs = Preferences.userRoot().node("SliceViewer");
 	private static final String LOCATION_PREF = "slices location";
@@ -55,15 +53,7 @@ public class SliceViewer {
 
 		Button deleteButton = new Button("Delete");
 		deleteButton.setOnAction(event -> {
-			slices.images.remove(selectedSliceIndex);
-			slices.xIndices.remove(selectedSliceIndex);
-			slices.yIndices.remove(selectedSliceIndex);
 
-			//highlightedSliceView.parent
-
-			sliceViews.remove(selectedSliceIndex);
-
-			updateSelectedSlice(selectedSliceIndex);
 		});
 
 		ToggleGroup hvToggle = new ToggleGroup();
@@ -93,6 +83,7 @@ public class SliceViewer {
 		try { prefs.put(LOCATION_PREF, dir.getCanonicalPath()); } catch (IOException e) {}
 	}
 	private void loadDir(File dir) {
+		/*
 		if (dir != null && dir.isDirectory()) {
 			slices.sliceDirectory = dir;
 			try {
@@ -105,73 +96,63 @@ public class SliceViewer {
 			catch (IOException e) {
 				new Alert(Alert.AlertType.ERROR, "Could not read directory", ButtonType.OK).show();
 			}
-		}
+		}*/
 	}
 
-	private void updateSelectedSlice(int index) {
-		if (highlightedSliceView != null) {
-			highlightedSliceView.setStyle("");
+	private void updateSelectedSlice(Slice slice) {
+		if (selectedSlice != null) {
+			selectedSlice.wrapperView.setStyle("");
 		}
 
-		if (index >= 0 && index < sliceViews.size()) {
-			highlightedSliceView = sliceViews.get(index);
-			highlightedSliceView.setStyle("-fx-border-color: blue; -fx-border-width: 2; -fx-border-style:solid");
-		}
+		slice.wrapperView.setStyle("-fx-border-color: blue; -fx-border-width: 2; -fx-border-style:solid");
 
-		selectedSliceIndex = index;
-	}
-
-	private void createSliceView(final int index) {
-		StackPane imageView = new StackPane(new ImageView(slices.images.get(index)));
-		sliceViews.add(imageView);
-
-		imageView.addEventFilter(MouseEvent.MOUSE_CLICKED, event -> {
-			updateSelectedSlice(index);
-		});
-
-		int xIndex = slices.xIndices.get(index);
-
-		Node sliceColumn = null;
-
-		if (xIndex < sliceBox.getChildren().size()) {
-			sliceColumn = sliceBox.getChildren().get(xIndex);
-		}
-
-		if (sliceColumn != null && sliceColumn instanceof VBox) {
-			((VBox) sliceColumn).getChildren().add(slices.yIndices.get(index), imageView);
-		}
-		else {
-			sliceBox.getChildren().add(xIndex, new VBox(1, imageView));
-		}
+		selectedSlice = slice;
 	}
 
 	public void addSliceImage(Image image) {
-		int x, y;
-		if (selectedSliceIndex >= 0) {
-			int selX = slices.xIndices.get(selectedSliceIndex);
-			int selY = slices.yIndices.get(selectedSliceIndex);
+		StackPane wrapperView = new StackPane(new ImageView(image));
 
+		final Slice slice = new Slice(image, wrapperView);
+
+		wrapperView.addEventFilter(MouseEvent.MOUSE_CLICKED, event -> {
+			updateSelectedSlice(slice);
+		});
+
+		if (selectedSlice != null && slices.size() != 0) {
 			if (addVertical) {
-				x = selX;
-				y = selY + 1;
+				int selectedY = selectedSlice.column.indexOf(selectedSlice);
+				if (addAbove) selectedSlice.column.add(selectedY, slice);
+				else selectedSlice.column.add(selectedY + 1, slice);
+
+				selectedSlice.columnView.getChildren().add(wrapperView);
+
+				slice.column = selectedSlice.column;
+				slice.columnView = selectedSlice.columnView;
 			}
 			else {
-				x = selX + 1;
-				y = selY;
+				int selectedX = slices.indexOf(selectedSlice.column);
+				createSliceColumn(slice, selectedX + 1);
 			}
 		}
 		else {
-			// first slice added
-			x = 0;
-			y = 0;
+			createSliceColumn(slice, 0);
 		}
+		updateSelectedSlice(slice);
+	}
+	private void createSliceColumn(Slice slice, int index) {
+		ArrayList<Slice> newColumn = new ArrayList<>(1);
+		newColumn.add(slice);
+		slice.column = newColumn;
+		slices.add(index, newColumn);
 
-		slices.images.add(image);
-		slices.xIndices.add(x);
-		slices.yIndices.add(y);
-
-		int index = slices.images.size() - 1;
-		createSliceView(index);
-		updateSelectedSlice(index);
+		VBox columnView = new VBox(1, slice.wrapperView);
+		slice.columnView = columnView;
+		sliceBox.getChildren().add(index, columnView);
 	}
 }
+
+
+
+
+
+
