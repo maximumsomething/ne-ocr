@@ -10,6 +10,10 @@ for i = 1:size(list)
 		img = imread([inDir, '/', filename]);
 		
 		core = findCore(imbinarize(rgb2gray(img)));
-		imwrite(core, [outDir, '/', filename], 'png');
+		if size(core) > 0
+			imwrite(core, [outDir, '/', filename], 'png');
+		else
+			fprintf('rejected: %s\n', filename);
+		end
 	end
 end

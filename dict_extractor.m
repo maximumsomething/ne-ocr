@@ -1,4 +1,4 @@
-inputFolder = 'Working Files/first pages without ToC';
+inputFolder = 'Working Files/Pages';
 outputFolder = 'Working Files/Extracted characters';
 
 list = dir(inputFolder);
@@ -10,39 +10,45 @@ Page = {};
 Rect = {};
 ImgName = {};
 
-for i = 1:numImages
+parfor i = 1:numImages
 	filename = list(i).name;
-	if filename(1) ~= '.'
+	if numel(filename) >= 6 && strcmp(filename(1:5), 'Page ')
+		
+		fprintf('%s\n', filename);
 		[imgs, rects] = processPage([inputFolder,'/',filename]);
 		
 		for j = 1:numel(rects)
 			filenameParts = strsplit(filename, ',');
 			pageName = filenameParts{1};
 			
-			Page{end+1, 1} = pageName;
-			Rect{end+1, 1} = rects{j};
+			%Page{end+1, 1} = pageName;
+			%Rect{end+1, 1} = rects{j};
 			
 			imageFilename = [pageName,' - ',num2str(j),'.png'];
-			ImgName{end+1, 1} = imageFilename;
+			%ImgName{end+1, 1} = imageFilename;
 			imwrite(imgs{j}, [outputFolder,'/',imageFilename]);
 		end
 	end
 end
 
-fprintf(fopen([outputFolder, '/info.json'], 'w'), ...
-	'%s', jsonencode(table(Page, Rect, ImgName)));
+%fprintf(fopen([outputFolder, '/info.json'], 'w'), ...
+%	'%s', jsonencode(table(Page, Rect, ImgName)));
 
 
 function [characterImgs, characterBounds] = processPage(filePath)
-	boldnessConstant = 6; % pixels. Minimum radius of character stroke.
+	boldnessConstant = 0.0018165; % fraction of page. Minimum radius of character stroke.
 	
-	% pixels, of big character being extracted. From any point to any point
-	maxCharacterSize = 250;
-	minCharacterSize = 20;
-	characterBorder = 50; % added on all sides
+	% fraction of page size, of big character being extracted. From any point to any point
+	maxCharacterSize = 0.075;
+	minCharacterSize = 0.006;
+	characterBorder = 0.01; % added on all sides
 	
 	inputImage = imread(filePath);
 	info = imfinfo(filePath);
+	
+	minCharacterPix = minCharacterSize * info.Width;
+	maxCharacterPix = maxCharacterSize * info.Width;
+	characterBorderPix = characterBorder * info.Width;
 	
 	cropRect = [(0.045 * info.Width), (info.Height * 0.08), ...
 		((1 - (0.045 + 0.03)) * info.Width), (info.Height * 0.84)];
@@ -56,17 +62,25 @@ function [characterImgs, characterBounds] = processPage(filePath)
 	%[height, width] = size(dist);
 	
 	pointRegions = {}; % array of (# of points) x 2 matrices
-	boundingRects = {}; % array of vectors [xLeft, yTop, xRight, yBottom]
+	% array of vectors [xLeft, yTop, xRight, yBottom]. 
+	% Each corresponds to pointRegion of the same index.
+	boundingRects = {}; 
 	
-	validMaxima = find(dist >= boldnessConstant);
+	validMaxima = find(dist >= boldnessConstant * info.Width);
 	
 	for i = 1:numel(validMaxima)
 		[y, x] = ind2sub(size(dist), validMaxima(i));
 		
 		foundRegion = false;
-		for j = 1:numel(pointRegions)
-			if sqrt((pointRegions{j}(1, 1) - x) .^ 2 + ...
-					(pointRegions{j}(1, 2) - y) .^ 2) < maxCharacterSize
+		for j = 1:numel(boundingRects)
+			corners = rectCorners(boundingRects{j});
+			nearby = false;
+			for k = 1:4
+				nearby = nearby || sqrt((corners(k, 1) - x) .^ 2 + ...
+					(corners(k, 2) - y) .^ 2) < maxCharacterPix;
+			end
+			
+			if nearby
 				pointRegions{j}(end+1, 1:end) = [x, y];
 				
 				if x < boundingRects{j}(1)
@@ -102,9 +116,11 @@ function [characterImgs, characterBounds] = processPage(filePath)
 		rect = boundingRects{j};
 		rect(3:4) = [rect(3) - rect(1), rect(4) - rect(2)];
 		
-		if rect(3) >= minCharacterSize && rect(4) >= minCharacterSize
+		if rect(3) >= minCharacterPix && rect(4) >= minCharacterPix && ...
+		   rect(3) <= maxCharacterPix && rect(4) <= maxCharacterPix
 			
-			rect = rect + [-characterBorder, -characterBorder, 2*characterBorder, 2*characterBorder];
+			rect = rect + [-characterBorderPix, -characterBorderPix, ...
+				2*characterBorderPix, 2*characterBorderPix];
 			rect = rect + [cropRect(1), cropRect(2), 0, 0];
 			
 			characterBounds{end+1} = rect;
@@ -122,6 +138,12 @@ function [characterImgs, characterBounds] = processPage(filePath)
 	%imshowpair(bwimage, maxima, 'montage');
 end
 
+% in: [xLeft, yTop, xRight, yBottom]. out: 4x2 matrix of corner points.
+function corners = rectCorners(rect)
 
-
+	corners = [rect(1) rect(2);...
+		rect(3) rect(4);...
+		rect(1) rect(4);...
+		rect(3) rect(2)];
+end
 

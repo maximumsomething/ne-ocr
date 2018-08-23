@@ -1,29 +1,31 @@
-function score = compareChar(bwchar, compareCore)
+function score = compareChar(bwchar, charPixels, charSize, compareCore, comparePixels)
 	
 	[compareDist, compareClosest] = bwdist(compareCore);
 	[charDist, charClosest] = bwdist(bwchar);
 	
-	scale = 7.9;
-	translate = [0.0, 0.0]; % after scaling.
-	
-	charPixels = pixelsFromImg(bwchar);
-	comparePixels = pixelsFromImg(compareCore);
-	
 	originalCharDist = distFromCentroid(charPixels);
 	originalCompareDist = distFromCentroid(comparePixels);
-	for i = 1:10
+	
+	translate = [0.0, 0.0]; % after scaling.
+	scale = min(size(compareCore) / charSize);
+	
+	for i = 1:5
 		
 		[scale1, trans1] = compareImgs(transformPixels(...
-			charPixels, scale, translate, size(bwchar), size(compareCore)),...
+			charPixels, scale, translate, charSize, size(compareCore)),...
 			originalCharDist * scale, compareClosest);
 		
 		
 		[scale2, trans2] = compareImgs(transformPixels(...
 			comparePixels, 1/scale, -translate / scale,...
-			size(compareCore), size(bwchar)),...
+			size(compareCore), charSize),...
 			originalCompareDist / scale, charClosest);
 		
 		scale = scale * (scale1 / scale2);
+		if scale == 0 || isinf(scale) || isnan(scale)
+			score = Inf();
+			return;
+		end
 		
 		translate = trans1 - trans2*scale;
 	end
@@ -33,20 +35,14 @@ function score = compareChar(bwchar, compareCore)
 	[comparePixLen, ~] = size(comparePixels);
 	
 	score1 = scoreImg(transformPixels(comparePixels,...
-		1/scale, -translate / scale, size(compareCore), size(bwchar)),...
+		1/scale, -translate / scale, size(compareCore), charSize),...
 		 charDist) / charPixLen;
 	
 	finalPixels = transformPixels(...
-		charPixels, scale, translate, size(bwchar), size(compareCore));
+		charPixels, scale, translate, charSize, size(compareCore));
 	score = score1 + scoreImg(finalPixels, compareDist) / comparePixLen;
 	
-	
 	%visualizeResult(finalPixels, compareCore);
-end
-
-function out = pixelsFromImg(img)
-	[r, c] = ind2sub(size(img), find(img));
-	out = [r, c];
 end
 
 function out = transformPixels(pixels, scale, translate, imgSize, compareSize)
@@ -54,13 +50,12 @@ function out = transformPixels(pixels, scale, translate, imgSize, compareSize)
 		+ ((compareSize - scale*imgSize) / 2);
 end
 
-
 function [scale, translation] = compareImgs(...
 		transformedPixels, centroidDist, compareImgClosest)
 	[height, width] = size(compareImgClosest);
 	
 	translation = [0.0, 0.0];
-	closestPixels = zeros(size(transformedPixels));
+	closestPixels = zeros(size(transformedPixels));	
 	
 	for j = 1:size(transformedPixels)
 		coord = transformedPixels(j, 1:2);
@@ -112,15 +107,13 @@ function [clamped, distance] = clamp(in, minBound, maxBound)
 	clamped = in;
 	distance = zeros(size(in));
 	
-	for i = 1:numel(in)
-		if in(i) < minBound(i)
-			distance(i) = minBound(i) - in(i);
-			clamped(i) = minBound(i);
-		elseif in(i) > maxBound(i)
-			distance = in(i) - maxBound(i);
-			clamped(i) = maxBound(i);
-		end
-	end
+	lows = in < minBound;
+	distance(lows) = minBound(lows) - in(lows);
+	clamped(lows) = minBound(lows);
+	
+	highs = in > maxBound;
+	distance(highs) = in(highs) - maxBound(highs);
+	clamped(highs) = maxBound(highs);
 end
 
 function [dist] = distFromCentroid(points) % points = nx2 matrix
