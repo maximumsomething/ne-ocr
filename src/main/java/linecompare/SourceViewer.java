@@ -104,8 +104,13 @@ public class SourceViewer {
 		Button chooseBtn = new Button("Choose folder");
 		chooseBtn.setOnAction(new EventHandler<ActionEvent>() {
 			public void handle(ActionEvent event) {
-				chooseDir();
+				chooseDir(false);
 			}
+		});
+
+		Button selectProgramBtn = new Button("Select program");
+		selectProgramBtn.setOnAction(event -> {
+			chooseDir(true);
 		});
 
 		HBox buttonsPane = new HBox(10, leftBtn, imageSel, rightBtn, zoomInBtn, zoomOutBtn, chooseBtn);
@@ -126,6 +131,8 @@ public class SourceViewer {
 				selectRect.setVisible(true);
 				selectRect.setTranslateX(mouseEvent.getX());
 				selectRect.setTranslateY(mouseEvent.getY());
+				selectRect.setWidth(0);
+				selectRect.setHeight(0);
 			}
 			if (mouseEvent.getEventType() == MouseEvent.MOUSE_DRAGGED && selectRect.isVisible()) {
 				selectRect.setWidth(mouseEvent.getX() - selectRect.getTranslateX());
@@ -134,10 +141,11 @@ public class SourceViewer {
 			if (mouseEvent.getEventType() == MouseEvent.MOUSE_RELEASED) {
 				selectRect.setVisible(false);
 
-				pushSlice((int) Math.round(selectRect.getTranslateX()),
-						(int) Math.round(selectRect.getTranslateY()),
-						(int) Math.round(selectRect.getWidth()),
-						(int) Math.round(selectRect.getHeight()));
+				Image selectedImage = getAreaImage((int) Math.round(selectRect.getTranslateX() / zoom),
+						(int) Math.round(selectRect.getTranslateY() / zoom),
+						(int) Math.round(selectRect.getWidth() / zoom),
+						(int) Math.round(selectRect.getHeight() / zoom));
+				pushCharacter(selectedImage);
 
 				selectRect.setWidth(0);
 				selectRect.setHeight(0);
@@ -145,7 +153,6 @@ public class SourceViewer {
 		});
 
 		ScrollPane scroll = new ScrollPane(pageStack);
-		scroll.setVmax(Double.POSITIVE_INFINITY);
 
 		mainPane.add(buttonsPane, 0, 0);
 		mainPane.add(scroll, 0, 1);
@@ -154,29 +161,44 @@ public class SourceViewer {
 		if (!prevFile.equals("")) useDir(new File(prevFile));
 	}
 
-	private void pushSlice(int x, int y, int width, int height) {
+	private Image getAreaImage(int x, int y, int width, int height) {
 		PixelReader reader = pageImage.getPixelReader();
-		Image slice = new WritableImage(reader, x, y, width, height);
+		return new WritableImage(reader, x, y, width, height);
+	}
+
+	private void pushSlice(Image slice) {
 		Main.sliceViewer.addSliceImage(slice);
+	}
+	private void pushCharacter(Image character) {
+		Main.resultsViewer.useImage(character);
 	}
 
 	public boolean hasDoc() {
 		return doc != null || imageDirectory != null;
 	}
 
-	public void chooseDir() {
-		doc = null;
-		imageDirectory = null;
+	public void chooseDir(boolean isProgramDir) {
+		if (!isProgramDir) {
+			doc = null;
+			imageDirectory = null;
+		}
 
 		DirectoryChooser chooser = new DirectoryChooser();
-		chooser.setTitle("Select folder with images");
+		if (isProgramDir) chooser.setTitle("Select directory with MATLAB program and files");
+		else chooser.setTitle("Select folder with images");
 
 		File dir = chooser.showDialog(window);
-		useDir(dir);
+
+		if (dir != null && dir.isDirectory()) {
+
+			if (isProgramDir) Main.programDir = dir;
+			else useDir(dir);
+
+
+		}
 	}
 
 	private void useDir(File dir) {
-		if (dir != null && dir.isDirectory()) {
 			imageDirectory = dir;
 			imageFiles = imageDirectory.listFiles(new FileFilter() {
 				public boolean accept(File pathname) {
@@ -196,7 +218,6 @@ public class SourceViewer {
 				prefs.put(LOCATION_PREF, dir.getCanonicalPath());
 			}
 			catch (IOException e) {}
-		}
 	}
 
 	public void choosePDF(Window window) {
