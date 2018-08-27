@@ -1,6 +1,7 @@
 inDir = 'Working Files/Extracted characters';
 outDir = 'Working Files/Extracted characters/cores';
 
+mkdir(outDir);
 list = dir(inDir);
 
 for i = 1:size(list)

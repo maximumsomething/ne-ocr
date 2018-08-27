@@ -1,15 +1,17 @@
 % returns empty matrix if the core is too small
 function core = findCore(bwimg)
+	core = bwskel(~bwareaopen(bwimg, 4));
 	
+	% minimum width and height of core, in pixels
+	minCharSize = 10;
+	% this code deperacated - discovered bwskel function
+	%{
 	% number of adjacent pixels that have to have a lower distance for a
 	% pixel to be considered part of the core
 	adjacencyConst = 7;
 	% minimum distance from other pixels (effectively radius of line) to
 	% be part of the core
 	minDist = 1.5;
-	
-	% minimum width and height of core, in pixels
-	minCharSize = 10;
 	
 	dist = bwdist(bwimg);
 	
@@ -20,23 +22,23 @@ function core = findCore(bwimg)
 	surrounds = subSurrounds(:,1) + subSurrounds(:,2)*height;
 	
 	core = zeros(size(dist), 'logical');
-	
+	%}
 	maxBound = intmax('int32');
 	% top, left
 	topBound = [maxBound, maxBound];
 	% bottom, right
 	bottomBound = int32([0, 0]);
 	
-	for i = 1:numel(dist)
-		
+	for i = 1:numel(core)
+		%{
 		thisSurrounds = surrounds + i;
 		
 		core(i) = dist(i) > minDist && sum(dist(thisSurrounds( ...
 			thisSurrounds >= 1 & thisSurrounds <= numel(dist))) ...
 			<= dist(i)) >= adjacencyConst;
-		
+		%}
 		if core(i)
-			[r, c] = ind2sub(size(dist), i);
+			[r, c] = ind2sub(size(core), i);
 			pixel = [r, c];
 			
 			low = pixel < topBound;
@@ -46,6 +48,9 @@ function core = findCore(bwimg)
 			bottomBound(high) = pixel(high);
 		end
 	end
+	
+	
+	
 	cropRect = [topBound(2) topBound(1), ...
 		bottomBound(2) - topBound(2), bottomBound(1) - topBound(1)];
 	if cropRect(3) >= minCharSize && cropRect(4) >= minCharSize

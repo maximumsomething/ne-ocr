@@ -1,3 +1,7 @@
+
+% todo: for each pixel, gradient of vectors, scored by the pixels it points
+% to.
+
 function score = compareChar(bwchar, charPixels, charSize, compareCore, comparePixels)
 	
 	[compareDist, compareClosest] = bwdist(compareCore);
@@ -34,13 +38,13 @@ function score = compareChar(bwchar, charPixels, charSize, compareCore, compareP
 	[charPixLen, ~] = size(charPixels);
 	[comparePixLen, ~] = size(comparePixels);
 	
-	score1 = scoreImg(transformPixels(comparePixels,...
+	score = scoreImg(transformPixels(comparePixels,...
 		1/scale, -translate / scale, size(compareCore), charSize),...
 		 charDist) / charPixLen;
 	
-	finalPixels = transformPixels(...
-		charPixels, scale, translate, charSize, size(compareCore));
-	score = score1 + scoreImg(finalPixels, compareDist) / comparePixLen;
+	%finalPixels = transformPixels(...
+	%	charPixels, scale, translate, charSize, size(compareCore));
+	%score = score1 + scoreImg(finalPixels, compareDist) / comparePixLen;
 	
 	%visualizeResult(finalPixels, compareCore);
 end
