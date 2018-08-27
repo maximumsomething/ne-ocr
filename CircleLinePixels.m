@@ -51,7 +51,7 @@ function [coords, lengths] = circleLinePixels(radius)
 			
 			if all(abs(nextCoord) <= abs(target))
 				
-				coords{i}(end+1,:) = roundCoord(nextCoord + center);
+				coords{i}(end+1,:) = roundCoord(nextCoord);
 				lengths{i}(end+1) = ...
 					sqrt(sum((nextCoord - currentCoord) .^ 2));
 			else
