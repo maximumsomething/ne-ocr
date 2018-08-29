@@ -51,6 +51,7 @@ function map = angleMap(image, coords, lengths)
 			map(:, :, i) = reshape(angleVals, size(workImage)) .* workImage;
 		end
 	end
+	%{
 	if isLogical
 		[~, depth] = size(map);
 		dispImgs = zeros([size(image), depth], 'double');
@@ -59,6 +60,7 @@ function map = angleMap(image, coords, lengths)
 	else
 		montage(uint8(imresize(cat(3, workImage, map),  10, 'nearest') * 255));
 	end
+	%}
 end
 
 %{
