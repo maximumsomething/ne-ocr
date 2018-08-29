@@ -23,16 +23,13 @@ function charNames = findChar(imgIn, coresDir)
 	distMap(9, 9) = true;
 	distMap = 8 - bwdist(distMap);
 	distMap(distMap < 0) = 0;
-	[x, y] = meshgrid(-8:8);
-	x = int32(x); y = int32(y);
-	distMapInds = y + x*size(grayChar, 2);
 	
-	for i = 1:numel(filenames)
+	parfor i = 1:numel(filenames)
 		filename = filenames{i};
 		compareCore = imread(char(strcat(coresDir, '/', filename)));
 		
 		score = compareChar(grayChar, charMap, bounds, ...
-			compareCore, compareMaps{i}, distMap, distMapInds);
+			compareCore, compareMaps{i}, distMap);
 		
 		% zero score is error signal
 		if score <= 0
