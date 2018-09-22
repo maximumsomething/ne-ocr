@@ -4,21 +4,56 @@
 % If image is logical, map is nxm matrix, where n = number of white pixels
 % in image and m = length(circleLines)
 function map = angleMap(image, coords, lengths)
-	[height, ~] = size(image);
 	
 	isLogical = islogical(image);
 	
 	if isLogical
-		pixels = find(image).';
-		map = zeros([numel(pixels), numel(coords)], 'single');
-		workImage = imdilate(image, strel('square', 2));
+		
+		comp = bwconncomp(image);
+		map = zeros([sum(image(:)), numel(coords)], 'single');
+		pixels = zeros([sum(image(:)), 1], 'uint32');
+		
+		pixelCount = 0;
+		for i = 1:comp.NumObjects
+			bwcomp = zeros(size(image), 'logical');
+			bwcomp(comp.PixelIdxList{i}) = true;
+			
+			compDist = (3 - bwdist(bwcomp)) / 3;
+			compDist(compDist < 0) = 0;
+			
+			newPixelCount = pixelCount + numel(comp.PixelIdxList{i});
+			
+			map((pixelCount + 1):newPixelCount, :) = doImage(coords, lengths, compDist, comp.PixelIdxList{i});
+			 	 
+			pixels((pixelCount + 1):newPixelCount) = comp.PixelIdxList{i};
+			pixelCount = newPixelCount;
+		end
+		
+		[~, indexes] = sort(pixels);
+		map = map(indexes, :);
 	else
 		workImage = max(image(:)) - image;
 		workImage = double(workImage) / double(max(workImage(:)));
 		
-		pixels = 1:1:numel(workImage);
-		map = zeros([size(workImage), numel(coords)], 'single');
+		map = reshape(doImage(coords, lengths, workImage, 1:1:numel(workImage)), ...
+			[size(workImage), numel(coords)]) .* workImage;
 	end
+	assert(all(all(all(map >= 0 & map <= 1))));
+
+	
+	if isLogical
+		[~, depth] = size(map);
+		dispImgs = zeros([size(image), depth], 'double');
+		dispImgs(repmat(image, 1, 1, depth)) = map;
+		montage(imresize(uint8(dispImgs * 255), 2, 'nearest'));
+	else
+		montage(uint8(imresize(cat(3, workImage, map),  10, 'nearest') * 255));
+	end
+	
+end
+
+function map = doImage(coords, lengths, image, pixels)
+	map = zeros([numel(pixels), numel(lengths)], 'single');
 	
 	% one pixel on the outer circle at a time
 	for i = 1:numel(lengths)
@@ -27,15 +62,22 @@ function map = angleMap(image, coords, lengths)
 		scoreValues = (numCoords:-1:1) .* lengths{i};
 		scoreValues = (scoreValues / sum(scoreValues));
 		
-		% nxm where n is number of coords and m is number of pixels
-		indCoords = (coords{i}(:,1) + coords{i}(:,2) * height) + pixels;
-		inBoundsCoords = indCoords > 0 & indCoords <= numel(workImage);
+		[r, c] = ind2sub(size(image), pixels);
+		% nxmx2 where n is number of coords and m is number of pixels		
+		transedCoords = cat(3, r(:).', c(:).') + permute(coords{i}, [1 3 2]);
 		
-		angleVals = zeros(size(indCoords));
-		angleVals(inBoundsCoords) = workImage(indCoords(inBoundsCoords)).' .* ...
+		inBoundsCoords = all(transedCoords > 0 & ...
+			transedCoords <= reshape(size(image), 1, 1, 2), 3);
+		
+		
+		angleVals = zeros(size(coords{i}, 1), numel(pixels));
+		angleVals(inBoundsCoords) = image(sub2ind(size(image),...
+			transedCoords(inBoundsCoords),...
+			transedCoords(padarray(inBoundsCoords, [0 0 1], 0, 'pre')))).' .* ...
 			scoreValues(rem(find(inBoundsCoords) - 1, numCoords) + 1);
 		
-		angleVals = sum(angleVals, 1);
+		map(:, i) = sum(angleVals, 1);
+		
 		
 		%[r, c] = ind2sub(size(image), linearCoord);
 		%coord = [r, c];
@@ -45,70 +87,8 @@ function map = angleMap(image, coords, lengths)
 		
 		%pixelVals = image(sub2ind(size(image), compareCoords(inBoundsCoords)));
 		
-		if isLogical
-			map(:, i) = angleVals;
-		else
-			map(:, :, i) = reshape(angleVals, size(workImage)) .* workImage;
-		end
+		
 	end
-	%{
-	if isLogical
-		[~, depth] = size(map);
-		dispImgs = zeros([size(image), depth], 'double');
-		dispImgs(repmat(image, 1, 1, depth)) = map;
-		montage(uint8(imresize(dispImgs,  5, 'nearest') * 255));
-	else
-		montage(uint8(imresize(cat(3, workImage, map),  10, 'nearest') * 255));
-	end
-	%}
 end
 
-%{
-old shit with oversight
-function map = angleMap(image, coords, lengths)
-	[width, height] = size(image);
-	
-	isLogical = islogical(image);
-	
-	if isLogical
-		pixels = find(image);
-		map = zeros([numel(pixels), numel(coords)], 'float');
-	else
-		image = ~image;
-		pixels = image;
-		map = zeros([size(image), numel(coords)], 'float');
-	end
-	
-	for i = 1:numel(pixels)
-		
-		scoreValues = (numel(lengths{i}):-1:1) .* lengths{i};
-		scoreValues = (scoreValues / sum(scoreValues));
-		
-		if isLogical
-			linearCoord = pixels(i);
-		else
-			linearCoord = i;
-		end
-		indCoords = (coords{i}(:,1,:) + coords{i}(:,2,:) * height) + linearCoord;
-		inBoundsCoords = indCoords > 0 & indCoords <= numel(image);
-		
-		angleVals = sum(image(indCoords(inBoundsCoords)) .*...
-			(scoreValues(inBoundsCoords)), 2);
-		
-		%[r, c] = ind2sub(size(image), linearCoord);
-		%coord = [r, c];
-		
-		%compareCoords = coord + coords{i};
-		%inBoundsCoords = all(compareCoords > 0 & compareCoords < size(image), 2);
-		
-		%pixelVals = image(sub2ind(size(image), compareCoords(inBoundsCoords)));
-		
-		if isLogical
-			map(i, :) = angleVals(:);
-		else
-			[r, c] = ind2sub(size(image), i);
-			map(r, c, :) = angleVals(:);
-		end
-	end
-end
-%}
+%

@@ -24,7 +24,7 @@ function charNames = findChar(imgIn, coresDir)
 	distMap = 8 - bwdist(distMap);
 	distMap(distMap < 0) = 0;
 	
-	parfor i = 1:numel(filenames)
+	for i = 1:numel(filenames)
 		filename = filenames{i};
 		compareCore = imread(char(strcat(coresDir, '/', filename)));
 		

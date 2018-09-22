@@ -1,10 +1,14 @@
 % returns empty matrix if the core is too small
-function core = findCore(bwimg)
-	core = bwskel(~bwareaopen(bwimg, 4));
+function core = scaleSkel(img, up, down)
+	core = distSkel(bwareaopen(imbinarize(rgb2gray(imresize(img, up))), 16));
+	
+	%core = imresize(double(core),...
+	%	0.5, 'bilinear', 'Antialiasing', false, 'Dither', false) > 0;
+	core = bwskel(imresize(double(core), down, 'bilinear') > 0);
 	
 	% minimum width and height of core, in pixels
 	minCharSize = 10;
-	% this code deperacated - discovered bwskel function
+	% this code used before 'bwskel' function discovered
 	%{
 	% number of adjacent pixels that have to have a lower distance for a
 	% pixel to be considered part of the core

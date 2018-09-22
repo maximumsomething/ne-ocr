@@ -1,3 +1,5 @@
+% old experiment
+
 % neighborCount = number of contiguous neighbors that have to be 1 for a pixel to be
 % set to 0
 function skel = thinSkel(bwimg)
