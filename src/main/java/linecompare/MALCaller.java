@@ -59,18 +59,22 @@ public class MALCaller {
 
 				engine.eval("cd " + Main.programDir.getAbsolutePath());
 
-				// get black-and-white image to show while computing
-				engine.eval("imwrite(colorBinarize(imread('" +
-						tempFile.getAbsolutePath() + "')), '" +
+				// get skeleton to show while computing
+				engine.eval("imwrite(scaleSkel(imread('" +
+						tempFile.getAbsolutePath() + "'),  12, 1/3, 0), '" +
 						bwimageTempFile + "', 'png')");
 
 				callback.bwImage(new Image(new File(bwimageTempFile).toURI().toString()));
 
 				String coresPath = Main.programDir.getAbsolutePath() + File.separator + "Working Files" + File.separator + "Extracted Characters" + File.separator + "cores";
 
+
+				System.out.println("findChar('" + tempFile.getAbsolutePath() + "', '" + coresPath + "')");
+
+
 				String charNames = engine.feval(
 						"findChar", commandOutput, commandOutput,
-						tempFile.getAbsolutePath(), coresPath);
+						bwimageTempFile, coresPath, true);
 
 				callback.finished(charNames);
 			}

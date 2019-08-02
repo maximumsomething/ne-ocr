@@ -51,6 +51,8 @@ public class SourceViewer {
 	private Preferences prefs = Preferences.userRoot().node("SourceViewer");
 	private static final String LOCATION_PREF = "book location";
 
+	private double selectX, selectY;
+
 	SourceViewer(Window window) {
 		this.window = window;
 		setupLayout();
@@ -127,28 +129,15 @@ public class SourceViewer {
 		pageStack.addEventFilter(MouseEvent.ANY, mouseEvent -> {
 
 			if (mouseEvent.getEventType() == MouseEvent.MOUSE_PRESSED) {
-
 				selectRect.setVisible(true);
-				selectRect.setTranslateX(mouseEvent.getX());
-				selectRect.setTranslateY(mouseEvent.getY());
-				selectRect.setWidth(0);
-				selectRect.setHeight(0);
+				selectX = mouseEvent.getX();
+				selectY = mouseEvent.getY();
 			}
 			if (mouseEvent.getEventType() == MouseEvent.MOUSE_DRAGGED && selectRect.isVisible()) {
-				selectRect.setWidth(mouseEvent.getX() - selectRect.getTranslateX());
-				selectRect.setHeight(mouseEvent.getY() - selectRect.getTranslateY());
+				updateSelectRect(mouseEvent.getX(), mouseEvent.getY(), false);
 			}
 			if (mouseEvent.getEventType() == MouseEvent.MOUSE_RELEASED) {
-				selectRect.setVisible(false);
-
-				Image selectedImage = getAreaImage((int) Math.round(selectRect.getTranslateX() / zoom),
-						(int) Math.round(selectRect.getTranslateY() / zoom),
-						(int) Math.round(selectRect.getWidth() / zoom),
-						(int) Math.round(selectRect.getHeight() / zoom));
-				pushCharacter(selectedImage);
-
-				selectRect.setWidth(0);
-				selectRect.setHeight(0);
+				updateSelectRect(mouseEvent.getX(), mouseEvent.getY(), true);
 			}
 		});
 
@@ -161,7 +150,39 @@ public class SourceViewer {
 		if (!prevFile.equals("")) useDir(new File(prevFile));
 	}
 
+	private void updateSelectRect(double mouseX, double mouseY, boolean done) {
+		double x = selectX, y = selectY, width = mouseX - selectX, height = mouseY - selectY;
+		if (width < 0) {
+			x += width;
+			width = -width;
+		}
+		if (height < 0) {
+			y += height;
+			height = -height;
+		}
+		if (!done) {
+			selectRect.setTranslateX(x);
+			selectRect.setTranslateY(y);
+
+			selectRect.setWidth(width);
+			selectRect.setHeight(height);
+		}
+		else {
+			selectRect.setVisible(false);
+
+			Image selectedImage = getAreaImage((int) Math.round(x / zoom),
+					(int) Math.round(y / zoom),
+					(int) Math.round(width / zoom),
+					(int) Math.round(height / zoom));
+			pushCharacter(selectedImage);
+
+			selectRect.setWidth(0);
+			selectRect.setHeight(0);
+		}
+	}
+
 	private Image getAreaImage(int x, int y, int width, int height) {
+
 		PixelReader reader = pageImage.getPixelReader();
 		return new WritableImage(reader, x, y, width, height);
 	}
