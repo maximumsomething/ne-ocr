@@ -1,6 +1,7 @@
 % returns empty matrix if the core is too small
-function core = scaleSkel(img, up, down)
-	core = distSkel(bwareaopen(imbinarize(rgb2gray(imresize(img, up))), 16));
+function core = scaleSkel(img, up, down, openPixels)
+	
+	core = distSkel(bwareaopen(imbinarize(rgb2gray(imresize(img, up))), openPixels));
 	
 	%core = imresize(double(core),...
 	%	0.5, 'bilinear', 'Antialiasing', false, 'Dither', false) > 0;

@@ -1,0 +1,1 @@
+findChar('/var/folders/97/cwymqvtx14ddjxpp244gdz140000gn/T/YiDictTool5459699546318806390/imageIn.png', '/Users/max/Documents/MATLAB/Working Files/Extracted Characters/cores', false)

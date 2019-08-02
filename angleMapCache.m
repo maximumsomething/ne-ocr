@@ -5,19 +5,23 @@ function angleMapCache()
 	list = dir(coresDir);
 	
 	filenames = {};
-	maps = {};
+	angleMaps = {};
+	allSkels = {};
 	for i = 1:numel(list)
 		filename = list(i).name;
 		[~, ~, extension] = fileparts(filename);
 		if strcmp(extension, '.png')
 			character = imread([list(i).folder, '/', filename]);
+			allSkels{end+1} = character;
 			filenames{end+1} = filename;
-			maps{end+1} = angleMap(character, coords, lengths);
+			angleMaps{end+1} = angleMap(character, coords, lengths);
 		end
 	end
 	
-	writeThing([coresDir '/ordered_filenames.dat'], filenames);
-	writeThing([coresDir '/angle_maps.dat'], maps);
+	save([coresDir '/coresCache.mat'], 'filenames', 'angleMaps', 'allSkels');
+	
+	%writeThing([coresDir '/ordered_filenames.dat'], filenames);
+	%writeThing([coresDir '/angle_maps.dat'], angleMaps);
 end
 
 function writeThing(name, data)
