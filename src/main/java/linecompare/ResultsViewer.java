@@ -43,7 +43,7 @@ public class ResultsViewer {
 	private static final int selectionViewImageWidth = 150;
 	void addToSelectionView(Image img) {
 
-		ImageView view = new ImageView(resampleImage(img, (int) (selectionViewImageWidth / img.getWidth())));
+		ImageView view = new ImageView(resampleImage(img, (int) Math.max(1, Math.round(selectionViewImageWidth / img.getWidth()))));
 		view.setSmooth(false);
 		view.setPreserveRatio(true);
 		selectionViewer.getChildren().add(view);

@@ -5,12 +5,11 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 
 import javax.imageio.ImageIO;
-import java.io.File;
-import java.io.IOException;
-import java.io.StringWriter;
+import java.io.*;
 import java.nio.file.Files;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 public class MALCaller {
 	private File tmpDir;
@@ -59,22 +58,50 @@ public class MALCaller {
 
 				engine.eval("cd " + Main.programDir.getAbsolutePath());
 
-				// get skeleton to show while computing
-				engine.eval("imwrite(scaleSkel(imread('" +
-						tempFile.getAbsolutePath() + "'),  12, 1/3, 0), '" +
-						bwimageTempFile + "', 'png')");
+				String skelCommand = "imwrite(scaleSkel(imread('" +
+						tempFile.getAbsolutePath() + "'),  36, 1/3, 0), '" +
+						bwimageTempFile + "', 'png')";
+				System.out.println(skelCommand);
+				engine.eval(skelCommand);
 
 				callback.bwImage(new Image(new File(bwimageTempFile).toURI().toString()));
 
+				System.out.println("skeleton: " + bwimageTempFile);
+
 				String coresPath = Main.programDir.getAbsolutePath() + File.separator + "Working Files" + File.separator + "Extracted Characters" + File.separator + "cores";
 
+				String compareExe = "/Users/max/Library/Developer/Xcode/DerivedData/connection_compare-azguassdtbouupaqtonbeyldvspy/Build/Products/Debug/connection compare";
 
-				System.out.println("findChar('" + tempFile.getAbsolutePath() + "', '" + coresPath + "')");
+				String command = "'" + compareExe + "' '" + coresPath + "' '" + bwimageTempFile + "'";
+				System.out.println(command);
 
+				ProcessBuilder builder = new ProcessBuilder()
+						//.command(compareExe, coresPath, bwimageTempFile)
+						//.command("printenv")
+						.command("sh", "-c", command);
+						//.redirectError(ProcessBuilder.Redirect.INHERIT);
+						//.inheritIO();
+				Process process = builder.start();
+
+				String charNames = new BufferedReader(new InputStreamReader(process.getInputStream()))
+						.lines().collect(Collectors.joining("\n"));
+				/*StringBuilder sb = new StringBuilder();
+				BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
+				String read;
+				while ((read=br.readLine()) != null) {
+					//System.out.println(read);
+					sb.append(read);
+				}
+				String charNames = sb.toString();*/
+
+
+				/*System.out.println("findChar('" + tempFile.getAbsolutePath() + "', '" + coresPath + "')");
 
 				String charNames = engine.feval(
 						"findChar", commandOutput, commandOutput,
-						bwimageTempFile, coresPath, true);
+						bwimageTempFile, coresPath, true);*/
+				process.waitFor();
+				System.out.println("chars:\n" + charNames);
 
 				callback.finished(charNames);
 			}
@@ -82,10 +109,11 @@ public class MALCaller {
 				return;
 			}
 			catch (ExecutionException e) {
+				e.printStackTrace();
 				callback.finished("");
 			}
 			catch (IOException e) {
-				// TODO
+				e.printStackTrace();
 			}
 			finally {
 				running = false;
