@@ -1,32 +1,46 @@
 #ifndef connections_h
 #define connections_h
 
+
 #include <vector>
 #include <opencv2/core.hpp>
 
 struct Connection {
-	float length;
-	float angle;
+	// distance from one end to the other
+	//float straightLength;
+	// number of pixels in the connection
+	float pixLength;
 	// end points of connection
-	// intersection numbers count from 1
+	// intersection numbers count from 0
 	int intersect1, intersect2;
 };
 
-struct ConnectionList {
+struct Intersection {
+	std::vector<Connection> c;
+	cv::Point2f pos;
+};
+struct AnalyzedSkeleton {
+	std::vector<Intersection> isects;
+	std::vector<Connection> c;
+};
+
+/*struct ConnectionList {
 	// intersections and endpoints
 	int numIntersections;
 	std::vector<Connection> c;
-};
+};*/
 
 // amount is how many good matches there are, and strength is how good those matches are.
 struct CharPairScore {
 	float amount, strength;
 };
 
-ConnectionList getConnections(cv::Mat skel);
-CharPairScore compareConnections(ConnectionList inA, ConnectionList inB);
+AnalyzedSkeleton analyzeSkeleton(cv::Mat skel);
+CharPairScore compareSkeletons(AnalyzedSkeleton inA, AnalyzedSkeleton inB);
 
-void writeConnectionLists(const char* filename, std::vector<ConnectionList> connections);
-std::vector<ConnectionList> readConnectionLists(const char* filename);
+void visualizeConnections(cv::Mat skel);
+
+//void writeAnalyzedSkeletons(const char* filename, std::vector<AnalyzedSkeleton> connections);
+//std::vector<AnalyzedSkeleton> readAnalyzedSkeletons(const char* filename);
 
 #endif /* connections_h */

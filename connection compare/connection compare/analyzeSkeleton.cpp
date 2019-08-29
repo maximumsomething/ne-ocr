@@ -5,6 +5,9 @@
 #include "connections.h"
 
 
+// idea: add (virtual?) connections between non adjacent intersections
+// weight first step of compareConnections like second step, so a few non-matches don't matter
+
 using namespace cv;
 
 // number of neighbors including self
@@ -60,7 +63,7 @@ struct labels {
 }*/
 
 
-ConnectionList getConnections(Mat skel) {
+AnalyzedSkeleton analyzeSkeleton(Mat skel) {
 	
 	Mat labeledSkel(skel.size(), CV_8U);
 	
@@ -84,10 +87,11 @@ ConnectionList getConnections(Mat skel) {
 	//imwrite("/Users/max/Downloads/labeledSkel.png", labeledSkel * 75);
 	
 	
-	double nomImgSize = 0;
+	/*float nomImgSize = 0;
 	for (int i = 0; i < skel.total(); ++i) {
 		if (skel.data[i] != 0) ++nomImgSize;
-	}
+	}*/
+	float nomImgSize = (skel.rows + skel.cols)/2.0;
 	
 	Mat noIntersections(skel.size(), CV_8U);
 	for (int i = 0; i < noIntersections.total(); ++i) {
@@ -95,46 +99,70 @@ ConnectionList getConnections(Mat skel) {
 								   && labeledSkel.data[i] != labels::intersection);
 	}
 	Mat labeledNoIntersections;
+	// the Mat has 0 as background, and components labeled counting up from 1
 	int numConns = connectedComponents(noIntersections, labeledNoIntersections, 8, CV_16U);
+	numConns -= 1;
 	
 	//imwrite("/Users/max/Downloads/noi.png", labeledNoIntersections * 5000);
 	
-	Mat intersections(skel.size(), CV_8U);
-	for (int i = 0; i < intersections.total(); ++i) {
-		intersections.data[i] = (labeledSkel.data[i] == labels::endpoint
+	Mat intersectionImg(skel.size(), CV_8U);
+	for (int i = 0; i < intersectionImg.total(); ++i) {
+		intersectionImg.data[i] = (labeledSkel.data[i] == labels::endpoint
 								   || labeledSkel.data[i] == labels::intersection);
 	}
 	Mat labeledIntersections;
-	int numIntersections = connectedComponents(intersections, labeledIntersections, 8, CV_16U);
+	int numIntersections = connectedComponents(intersectionImg, labeledIntersections, 8, CV_16U);
+	numIntersections -= 1;
 	
-	std::vector<Connection> connections(numConns - 1);
-	std::vector<Point> foundConnectionEnds(numConns - 1, Point(-1, -1));
+	std::vector<Connection> connections(numConns, { 0, -1, -1});
+	std::vector<Intersection> intersections(numIntersections);
+	std::vector<Point> foundConnectionEnds(numConns, Point(-1, -1));
 	
 	for (int y = 0; y < skel.rows; ++y) {
 		for (int x = 0; x < skel.cols; ++x) {
 			
-			uint16_t val = labeledNoIntersections.at<uint16_t>(y, x);
-			if (val != 0 && numNeighbors<uint16_t>(labeledNoIntersections, x, y, val) == 2) {
-				// end point of connection
-				
-				uint16_t intersectionNum = getANeighbor(labeledIntersections, x, y);
-				assert(intersectionNum != 0);
-				if (foundConnectionEnds[val - 1].x < 0) {
+			uint16_t connectionNum = labeledNoIntersections.at<uint16_t>(y, x);
+			if (connectionNum != 0) {
+				connections[connectionNum - 1].pixLength += 1/nomImgSize;
+				if (numNeighbors<uint16_t>(labeledNoIntersections, x, y, connectionNum) == 2) {
+					// end point of connection
 					
-					foundConnectionEnds[val - 1] = Point(x, y);
-					connections[val - 1].intersect1 = intersectionNum - 1;
+					uint16_t intersectionNum = getANeighbor(labeledIntersections, x, y);
+					assert(intersectionNum != 0);
+					if (connections[connectionNum - 1].intersect1 < 0) {
+						
+						foundConnectionEnds[connectionNum - 1] = Point(x, y);
+						connections[connectionNum - 1].intersect1 = intersectionNum - 1;
+					}
+					else {
+						connections[connectionNum - 1].intersect2 = intersectionNum - 1;
+						double xSize = x - foundConnectionEnds[connectionNum - 1].x;
+						double ySize = y - foundConnectionEnds[connectionNum - 1].y;
+						
+						//connections[connectionNum - 1].straightLength = sqrt(pow(xSize, 2) + pow(ySize, 2)) / nomImgSize;
+						
+						//connections[connectionNum - 1].angle = atan2(xSize, ySize);
+					}
 				}
-				else {
-					connections[val - 1].intersect2 = intersectionNum - 1;
-					double xSize = x - foundConnectionEnds[val - 1].x;
-					double ySize = y - foundConnectionEnds[val - 1].y;
-					
-					connections[val - 1].length = sqrt(pow(xSize, 2) + pow(ySize, 2)) / nomImgSize;
-					
-					connections[val - 1].angle = atan2(xSize, ySize);
-				}
+			}
+			uint16_t thisIntersectionNum = labeledIntersections.at<uint16_t>(y, x);
+			if (thisIntersectionNum != 0) {
+				intersections[thisIntersectionNum - 1].pos = Point2f(x / nomImgSize, y / nomImgSize);
 			}
 		}
 	}
-	return { numIntersections - 1, connections };
+	for (int i = 0; i < numConns; ++i) {
+		if (connections[i].intersect1 == -1 || connections[i].intersect2 == -1) {
+			// bad connection
+			//fprintf(stderr, "bad bone\n");
+			connections.erase(connections.begin() + i);
+			--i;
+			--numConns;
+			continue;
+		}
+		intersections[connections[i].intersect1].c.push_back(connections[i]);
+		intersections[connections[i].intersect2].c.push_back(connections[i]);
+	}
+	
+	return { intersections, connections };
 }

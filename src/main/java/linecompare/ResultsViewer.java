@@ -46,6 +46,7 @@ public class ResultsViewer {
 		ImageView view = new ImageView(resampleImage(img, (int) Math.max(1, Math.round(selectionViewImageWidth / img.getWidth()))));
 		view.setSmooth(false);
 		view.setPreserveRatio(true);
+		view.setFitWidth(selectionViewImageWidth);
 		selectionViewer.getChildren().add(view);
 	}
 

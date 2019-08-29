@@ -72,11 +72,11 @@ public class MALCaller {
 
 				String compareExe = "/Users/max/Library/Developer/Xcode/DerivedData/connection_compare-azguassdtbouupaqtonbeyldvspy/Build/Products/Debug/connection compare";
 
-				String command = "'" + compareExe + "' '" + coresPath + "' '" + bwimageTempFile + "'";
+				String command = "'" + compareExe + "' compare '" + coresPath + "' '" + bwimageTempFile + "'";
 				System.out.println(command);
 
 				ProcessBuilder builder = new ProcessBuilder()
-						//.command(compareExe, coresPath, bwimageTempFile)
+						//.command(compareExe, "compare", coresPath, bwimageTempFile)
 						//.command("printenv")
 						.command("sh", "-c", command);
 						//.redirectError(ProcessBuilder.Redirect.INHERIT);
