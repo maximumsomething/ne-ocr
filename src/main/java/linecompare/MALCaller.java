@@ -15,6 +15,7 @@ public class MALCaller {
 	private File tmpDir;
 	private Future<MatlabEngine> engineFuture;
 	private Thread matlabThread;
+	private Process comparerProcess;
 
 	public boolean running = false;
 
@@ -34,11 +35,17 @@ public class MALCaller {
 	public interface Callback {
 		void bwImage(Image bwimage);
 		void finished(String charNames);
+		void failed();
+	}
+
+	public void stop() {
+		if (running) matlabThread.interrupt();
+		if (comparerProcess != null) comparerProcess.destroy();
 	}
 
 	void findChar(Image character, Callback callback) {
 
-		if (running) matlabThread.interrupt();
+		stop();
 			/*
 			Process process = new ProcessBuilder(
 					Main.programDir.getAbsolutePath() + File.separator + "findchar",
@@ -68,6 +75,8 @@ public class MALCaller {
 
 				System.out.println("skeleton: " + bwimageTempFile);
 
+				if (Thread.interrupted()) throw new InterruptedException();
+
 				String coresPath = Main.programDir.getAbsolutePath() + File.separator + "Working Files" + File.separator + "Extracted Characters" + File.separator + "cores";
 
 				String compareExe = "/Users/max/Library/Developer/Xcode/DerivedData/connection_compare-azguassdtbouupaqtonbeyldvspy/Build/Products/Debug/connection compare";
@@ -81,9 +90,9 @@ public class MALCaller {
 						.command("sh", "-c", command);
 						//.redirectError(ProcessBuilder.Redirect.INHERIT);
 						//.inheritIO();
-				Process process = builder.start();
+				comparerProcess = builder.start();
 
-				String charNames = new BufferedReader(new InputStreamReader(process.getInputStream()))
+				String charNames = new BufferedReader(new InputStreamReader(comparerProcess.getInputStream()))
 						.lines().collect(Collectors.joining("\n"));
 				/*StringBuilder sb = new StringBuilder();
 				BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -100,20 +109,22 @@ public class MALCaller {
 				String charNames = engine.feval(
 						"findChar", commandOutput, commandOutput,
 						bwimageTempFile, coresPath, true);*/
-				process.waitFor();
+				comparerProcess.waitFor();
 				System.out.println("chars:\n" + charNames);
 
 				callback.finished(charNames);
 			}
 			catch (InterruptedException e) {
-				return;
+				if (comparerProcess != null) comparerProcess.destroy();
+				comparerProcess = null;
 			}
 			catch (ExecutionException e) {
 				e.printStackTrace();
-				callback.finished("");
+				callback.failed();
 			}
 			catch (IOException e) {
 				e.printStackTrace();
+				callback.failed();
 			}
 			finally {
 				running = false;

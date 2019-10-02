@@ -93,11 +93,13 @@ AnalyzedSkeleton analyzeSkeleton(Mat skel) {
 	}*/
 	float nomImgSize = (skel.rows + skel.cols)/2.0;
 	
+	// the skeleton with the intersections removed
 	Mat noIntersections(skel.size(), CV_8U);
 	for (int i = 0; i < noIntersections.total(); ++i) {
 		noIntersections.data[i] = (labeledSkel.data[i] != labels::blank
 								   && labeledSkel.data[i] != labels::intersection);
 	}
+	
 	Mat labeledNoIntersections;
 	// the Mat has 0 as background, and components labeled counting up from 1
 	int numConns = connectedComponents(noIntersections, labeledNoIntersections, 8, CV_16U);
@@ -105,11 +107,16 @@ AnalyzedSkeleton analyzeSkeleton(Mat skel) {
 	
 	//imwrite("/Users/max/Downloads/noi.png", labeledNoIntersections * 5000);
 	
+	// find corners in the connections
+	// TODO
+	
+	
 	Mat intersectionImg(skel.size(), CV_8U);
 	for (int i = 0; i < intersectionImg.total(); ++i) {
 		intersectionImg.data[i] = (labeledSkel.data[i] == labels::endpoint
 								   || labeledSkel.data[i] == labels::intersection);
 	}
+	
 	Mat labeledIntersections;
 	int numIntersections = connectedComponents(intersectionImg, labeledIntersections, 8, CV_16U);
 	numIntersections -= 1;
@@ -164,5 +171,5 @@ AnalyzedSkeleton analyzeSkeleton(Mat skel) {
 		intersections[connections[i].intersect2].c.push_back(connections[i]);
 	}
 	
-	return { intersections, connections };
+	return { intersections, connections, nomImgSize };
 }

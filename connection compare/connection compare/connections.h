@@ -22,6 +22,8 @@ struct Intersection {
 struct AnalyzedSkeleton {
 	std::vector<Intersection> isects;
 	std::vector<Connection> c;
+	// all isect positions are divided by this
+	float nomImgSize;
 };
 
 /*struct ConnectionList {
@@ -36,9 +38,10 @@ struct CharPairScore {
 };
 
 AnalyzedSkeleton analyzeSkeleton(cv::Mat skel);
-CharPairScore compareSkeletons(AnalyzedSkeleton inA, AnalyzedSkeleton inB);
+CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB, std::function<void (float *)> visHook = [](float*){});
 
 void visualizeConnections(cv::Mat skel);
+void visualizeIntersections(cv::Mat skelA, cv::Mat skelB);
 
 //void writeAnalyzedSkeletons(const char* filename, std::vector<AnalyzedSkeleton> connections);
 //std::vector<AnalyzedSkeleton> readAnalyzedSkeletons(const char* filename);

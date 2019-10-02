@@ -80,6 +80,10 @@ void doCompare(const char* coresDir, const char* skelFile) {
 		return scores[a].strength > scores[b].strength;
 	});
 	
+	// visualize top result
+	visualizeIntersections(imread(skelFile, IMREAD_GRAYSCALE), imread(coresDir + std::string("/") + compareChars.names[scoreIndices[0]], IMREAD_GRAYSCALE));
+	
+	
 	for (int i = 0; i < amountHold; ++i) {
 		fprintf(stderr, "amount: %f strength: %f ", scores[scoreIndices[i]].amount, scores[scoreIndices[i]].strength);
 		printf("%s\n", compareChars.names[scoreIndices[i]].c_str());
@@ -100,12 +104,19 @@ int main(int argc, const char * argv[]) {
 			}
 			else doCompare(argv[2], argv[3]);
 		}
-		else if (verb == "vis") {
+		else if (verb == "visc") {
 			if (argc < 3) {
 				fprintf(stderr, "usage: vis skeletonImg");
 				return 1;
 			}
 			else visualizeConnections(imread(argv[2], cv::IMREAD_GRAYSCALE));
+		}
+		else if (verb == "visi") {
+			if (argc < 4) {
+				fprintf(stderr, "usage: compare coresDir skeletonImg");
+				return 1;
+			}
+			else visualizeIntersections(imread(argv[2], IMREAD_GRAYSCALE), imread(argv[3], IMREAD_GRAYSCALE));
 		}
 		else fprintf(stderr, "unknown verb %s", argv[1]);
 	}

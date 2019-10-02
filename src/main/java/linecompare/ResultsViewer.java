@@ -1,10 +1,14 @@
 package linecompare;
 
 import javafx.application.Platform;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.geometry.Pos;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.image.*;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -19,7 +23,8 @@ public class ResultsViewer {
 	VBox resultsPane = new VBox(5);
 	HBox selectionViewer = new HBox(3);
 	String characterFolder = "Working Files/Extracted Characters";
-	Label workingLabel = new Label();
+	BorderPane workingPane = new BorderPane();
+
 	MALCaller programCaller = new MALCaller();
 
 	ResultsViewer(Window window) {
@@ -36,8 +41,20 @@ public class ResultsViewer {
 		mainPane.add(selectionViewer, 0, 1);
 		mainPane.add(resultsScroll, 0, 2);
 
+		Label workingLabel = new Label();
 		workingLabel.setText("Working...");
 		workingLabel.setFont(Font.font(14));
+		workingPane.setLeft(workingLabel);
+
+		Button stopButton = new Button("Stop");
+		stopButton.setOnAction(new EventHandler<ActionEvent>() {
+			@Override
+			public void handle(ActionEvent event) {
+				programCaller.stop();
+				mainPane.getChildren().remove(workingPane);
+			}
+		});
+		workingPane.setRight(stopButton);
 	}
 
 	private static final int selectionViewImageWidth = 150;
@@ -79,9 +96,10 @@ public class ResultsViewer {
 	}
 
 	void useImage(Image character) {
+		resultsPane.getChildren().clear();
 
-		if (!programCaller.running && !mainPane.getChildren().contains(workingLabel)) {
-			mainPane.add(workingLabel, 0, 0);
+		if (!programCaller.running && !mainPane.getChildren().contains(workingPane)) {
+			mainPane.add(workingPane, 0, 0);
 		}
 
 		selectionViewer.getChildren().clear();
@@ -101,13 +119,16 @@ public class ResultsViewer {
 				String[] nameArray = charNames.split("\n");
 				Platform.runLater(() -> ResultsViewer.this.gotResults(nameArray));
 			}
+			@Override
+			public void failed() {
+				mainPane.getChildren().remove(workingPane);
+			}
 		});
 	}
 
 	void gotResults(String[] results) {
 
-		resultsPane.getChildren().clear();
-		mainPane.getChildren().remove(workingLabel);
+		mainPane.getChildren().remove(workingPane);
 
 		for (int i = 0; i < results.length; ++i) {
 
@@ -117,6 +138,7 @@ public class ResultsViewer {
 
 			ImageView imgView = new ImageView(image);
 			imgView.setPreserveRatio(true);
+			if (image.getWidth() > resultsPane.getWidth()) imgView.fitWidthProperty().bind(resultsPane.widthProperty());
 
 			String pageNum = results[i].substring(0, results[i].indexOf(" - "));
 
