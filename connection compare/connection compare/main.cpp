@@ -2,6 +2,9 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <string>
 
+#include <thread>
+#include <atomic>
+
 using namespace cv;
 
 AnalyzedSkeleton getConnectionsFromFile(const char* filename) {
@@ -9,6 +12,7 @@ AnalyzedSkeleton getConnectionsFromFile(const char* filename) {
 	
 	if (skel.empty()) {
 		printf("Could not load image: %s\n", filename);
+		return {{}, {}, -1};
 	}
 	return analyzeSkeleton(skel);
 }
@@ -36,58 +40,67 @@ AllCompares getAllCompareChars(const char* path) {
 		std::string fullname = path + std::string("/") + filename;
 		
 		analyzedSkeletons.push_back(getConnectionsFromFile(fullname.c_str()));
-		filenames.push_back(filename);
+		
+		if (analyzedSkeletons.back().nomImgSize == -1) analyzedSkeletons.pop_back();
+		else filenames.push_back(filename);
 	}
 	free(filename);
 	return { analyzedSkeletons, filenames };
 }
 
-void doCompare(const char* coresDir, const char* skelFile) {
+
+constexpr bool doParallel = true;
+
+void doCompare(const char* coresDir, const char* skelFile, bool doVis) {
 	auto compareChars = getAllCompareChars(coresDir);
 	
 	AnalyzedSkeleton thisChar = getConnectionsFromFile(skelFile);
 	
 	std::vector<CharPairScore> scores(compareChars.chars.size());
 	std::vector<int> scoreIndices(compareChars.chars.size());
-	for (int i = 0; i < compareChars.chars.size(); ++i) {
-		scores[i] = compareSkeletons(thisChar, compareChars.chars[i]);
-		scoreIndices[i] = i;
+	
+	if (doParallel) {
+		// Thread pool for running compareSkeletons
+		std::vector<std::thread> workers(std::thread::hardware_concurrency());
+		std::atomic<int> charNum(0);
+		for (auto worker = workers.begin(); worker < workers.end(); ++worker) {
+			*worker = std::thread([&]() {
+				while (true) {
+					int i = ++charNum;
+					if (i > compareChars.chars.size()) break;
+					
+					scores[i] = compareSkeletons(thisChar, compareChars.chars[i]);
+					scoreIndices[i] = i;
+				}
+			});
+		}
+		
+		for (auto worker = workers.begin(); worker < workers.end(); ++worker) {
+			worker->join();
+		}
 	}
-	// Sort by strength the characters with amount 2/3 or greater of total
-	/*std::sort(scoreIndices.begin(), scoreIndices.end(), [&](int a, int b) {
-	 return scores[a].amount >= thisChar.numIntersections * (2.0/3.0) &&
-	 scores[a].strength > scores[b].strength;
-	 });
-	 for (int i = 0; i < 100; ++i) {
-	 fprintf(stderr, "amount: %f strength: %f ", scores[scoreIndices[i]].amount, scores[scoreIndices[i]].strength);
-	 printf("%s\n", compareChars.names[scoreIndices[i]].c_str());
-	 }*/
 	
-	constexpr int amountHold = 40;
+	else {
+		for (int i = 0; i < compareChars.chars.size(); ++i) {
+			scores[i] = compareSkeletons(thisChar, compareChars.chars[i]);
+			scoreIndices[i] = i;
+		}
+	}
 	
-	// take the amountHold characters with highest amount, as well as all characters with amount over 2/3 of total
-	//then sort them by strength
+	constexpr int outputCount = 40;
+	
+	
 	std::sort(scoreIndices.begin(), scoreIndices.end(), [&scores](int a, int b) {
-		return scores[a].amount > scores[b].amount;
-	});
-	int numGood = 0;
-	for (int i = 0; i < compareChars.chars.size(); ++i) {
-		if (scores[i].amount >= thisChar.isects.size() * (2.0/3.0)) ++numGood;
-	}
-	
-	std::sort(scoreIndices.begin(), min(scoreIndices.begin() + max(amountHold, numGood),
-										scoreIndices.end()), [&scores](int a, int b) {
 		return scores[a].strength > scores[b].strength;
 	});
 	
-	// visualize top result
-	visualizeIntersections(imread(skelFile, IMREAD_GRAYSCALE), imread(coresDir + std::string("/") + compareChars.names[scoreIndices[0]], IMREAD_GRAYSCALE));
-	
-	
-	for (int i = 0; i < amountHold; ++i) {
-		fprintf(stderr, "amount: %f strength: %f ", scores[scoreIndices[i]].amount, scores[scoreIndices[i]].strength);
+	for (int i = 0; i < outputCount; ++i) {
+		fprintf(stderr, "strength: %f ", scores[scoreIndices[i]].strength);
 		printf("%s\n", compareChars.names[scoreIndices[i]].c_str());
 	}
+	
+	// visualize top result
+	if (doVis) visualizeIntersections(imread(skelFile, IMREAD_GRAYSCALE), imread(coresDir + std::string("/") + compareChars.names[scoreIndices[0]], IMREAD_GRAYSCALE));
 	
 }
 
@@ -102,7 +115,7 @@ int main(int argc, const char * argv[]) {
 				fprintf(stderr, "usage: compare coresDir skeletonImg");
 				return 1;
 			}
-			else doCompare(argv[2], argv[3]);
+			else doCompare(argv[2], argv[3], false);
 		}
 		else if (verb == "visc") {
 			if (argc < 3) {
@@ -113,10 +126,17 @@ int main(int argc, const char * argv[]) {
 		}
 		else if (verb == "visi") {
 			if (argc < 4) {
+				fprintf(stderr, "visi skeleton1 skeleton2");
+				return 1;
+			}
+			visualizeIntersections(imread(argv[2], IMREAD_GRAYSCALE), imread(argv[3], IMREAD_GRAYSCALE));
+		}
+		else if (verb == "compareAndVisi") {
+			if (argc < 4) {
 				fprintf(stderr, "usage: compare coresDir skeletonImg");
 				return 1;
 			}
-			else visualizeIntersections(imread(argv[2], IMREAD_GRAYSCALE), imread(argv[3], IMREAD_GRAYSCALE));
+			else doCompare(argv[2], argv[3], true);
 		}
 		else fprintf(stderr, "unknown verb %s", argv[1]);
 	}

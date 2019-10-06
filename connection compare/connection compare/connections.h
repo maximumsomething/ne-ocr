@@ -32,9 +32,9 @@ struct AnalyzedSkeleton {
 	std::vector<Connection> c;
 };*/
 
-// amount is how many good matches there are, and strength is how good those matches are.
+// Used to store multiple values.. now only stores one
 struct CharPairScore {
-	float amount, strength;
+	float strength;
 };
 
 AnalyzedSkeleton analyzeSkeleton(cv::Mat skel);
