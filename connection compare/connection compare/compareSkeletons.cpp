@@ -8,6 +8,37 @@
 #define LOOPSET(e, val) { for (int iii = 0; iii < sizeof(e) / sizeof(e[0]); ++iii) e[iii] = val; }
 
 
+
+
+template<class innerT, class containerT = std::vector<innerT> >
+class array2D : public containerT {
+	
+	size_t sizX, sizY;
+	
+public:
+	array2D(size_t x, size_t y): sizX(x), sizY(y), containerT(x*y) {}
+	array2D(size_t x, size_t y, containerT&& super): sizX(x), sizY(y), containerT(super) {}
+	
+	class single_row {
+	public:
+		size_t row;
+		array2D<innerT, containerT>* theArr;
+		
+		innerT& operator[](size_t i) { return theArr->get(row, i); }
+	};
+	single_row operator[](size_t i) {
+		return { i, this };
+	}
+	innerT& get(size_t ix, size_t iy) {
+		assert(iy < sizY && ix < sizX);
+		return containerT::operator[](iy + ix*sizY);
+	}
+	containerT& linear() {
+		return *this;
+	}
+};
+
+
 struct ConnProps {
 	float straightLength, pixLength, angle;
 	int endIsectNum;
@@ -116,7 +147,7 @@ public:
 struct ScoreSig { float score, significance; };
 
 void compareConnectionsOfIntersections(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
-									float* isectScores,
+									array2D<float>& isectScores,
 									   std::function<struct ScoreSig (ConnProps,ConnProps)> getScore) {
 	
 	
@@ -195,11 +226,11 @@ void compareConnectionsOfIntersections(AnalyzedSkeleton& inA, AnalyzedSkeleton& 
 				}
 				float scoreBA = totalScoreBA / totalSignificanceBA;
 				
-				GET2D(isectScores, a, b, inB.isects.size()) = (scoreAB + scoreBA) / 2;
+				isectScores[a][b] = (scoreAB + scoreBA) / 2;
 			}
 			else {
 				assert(totalScoreAB == 0);
-				GET2D(isectScores, a, b, inB.isects.size()) = -10;
+				isectScores[a][b] = -10;
 			}
 		}
 	}
@@ -219,10 +250,9 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 	 looking for the one with the most similar intersections.
 	 */
 	
-	float isectScores[inA.isects.size()][inB.isects.size()];
-	ZERO(isectScores);
+	array2D<float> isectScores(inA.isects.size(), inB.isects.size());
 	
-	compareConnectionsOfIntersections(inA, inB, (float* ) isectScores,
+	compareConnectionsOfIntersections(inA, inB, isectScores,
 									  [](ConnProps connA, ConnProps connB) -> struct ScoreSig {
 		float angleDiff = abs(connA.angle - connB.angle);
 		while (angleDiff > M_PI*2) angleDiff -= M_PI*2;
@@ -242,13 +272,12 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 		
 	});
 	
-	visHook((float *) isectScores);
+	visHook(isectScores.data());
 	
 	// Let's do that again!
-	float newIsectScores[inA.isects.size()][inB.isects.size()];
-	ZERO(newIsectScores);
+	array2D<float> newIsectScores(inA.isects.size(), inB.isects.size());
 	
-	compareConnectionsOfIntersections(inA, inB, (float *) newIsectScores,
+	compareConnectionsOfIntersections(inA, inB, newIsectScores,
 	[&](ConnProps connsA, ConnProps connsB) -> struct ScoreSig {
 		
 		
@@ -257,7 +286,7 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 		return  { score, 1 };
 	});
 	
-	visHook((float *) newIsectScores);
+	visHook(newIsectScores.data());
 	
 	
 	std::vector<float> aScores(inA.isects.size()), bScores(inB.isects.size());
