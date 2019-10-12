@@ -191,7 +191,7 @@ public class SourceViewer {
 		Main.sliceViewer.addSliceImage(slice);
 	}
 	private void pushCharacter(Image character) {
-		Main.resultsViewer.useImage(character);
+		Main.resultsViewer.useImageFromDoc(character);
 	}
 
 	public boolean hasDoc() {

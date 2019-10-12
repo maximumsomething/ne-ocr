@@ -1,29 +1,29 @@
 package linecompare;
 
 import javafx.application.Platform;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.geometry.Pos;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
+import javafx.scene.control.*;
 import javafx.scene.image.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.scene.text.Font;
 import javafx.stage.Window;
 
 import java.io.File;
 
 public class ResultsViewer {
-	Window window;
+	private Window window;
 	GridPane mainPane = new GridPane();
-	VBox resultsPane = new VBox(5);
-	HBox selectionViewer = new HBox(3);
-	String characterFolder = "Working Files/Extracted Characters";
-	BorderPane workingPane = new BorderPane();
+	private VBox resultsPane = new VBox(5);
+	private HBox selectionViewer = new HBox(3);
+	Button stopButton = new Button("Stop");
+	ToggleButton drawButton, eraserButton;
+	Button undoButton, redoButton, clearButton;
+
+	DrawingView drawingView = new DrawingView();
+
+	private String characterFolder = "Working Files/Extracted Characters";
 
 	MALCaller programCaller = new MALCaller();
 
@@ -38,23 +38,83 @@ public class ResultsViewer {
 		ScrollPane resultsScroll = new ScrollPane(resultsPane);
 		resultsScroll.setPrefViewportWidth(10000000000.0);
 
+		mainPane.setVgap(10);
 		mainPane.add(selectionViewer, 0, 1);
 		mainPane.add(resultsScroll, 0, 2);
 
-		Label workingLabel = new Label();
+		/*Label workingLabel = new Label();
 		workingLabel.setText("Working...");
 		workingLabel.setFont(Font.font(14));
-		workingPane.setLeft(workingLabel);
+		topPane.setLeft(workingLabel);*/
 
-		Button stopButton = new Button("Stop");
-		stopButton.setOnAction(new EventHandler<ActionEvent>() {
-			@Override
-			public void handle(ActionEvent event) {
-				programCaller.stop();
-				mainPane.getChildren().remove(workingPane);
-			}
+		BorderPane topPane = new BorderPane();
+
+		stopButton.setOnAction(event -> {
+			programCaller.stop();
+			mainPane.getChildren().remove(topPane);
 		});
-		workingPane.setRight(stopButton);
+		topPane.setRight(stopButton);
+		stopButton.setVisible(false);
+
+		drawButton = new ToggleButton("✎");
+		drawButton.setTooltip(new Tooltip("Draw character"));
+		eraserButton = new ToggleButton("⌫");
+		eraserButton.setTooltip(new Tooltip("Eraser tool"));
+		undoButton = new Button("⃔");
+		undoButton.setTooltip(new Tooltip("Undo"));
+		redoButton = new Button("⃕");
+		redoButton.setTooltip(new Tooltip("Redo"));
+		clearButton = new Button("Clear");
+
+		drawButton.setOnAction(event -> {
+			if (drawButton.isSelected()) activateDrawing();
+			else deactivateDrawing();
+		});
+		undoButton.setOnAction(event -> {
+			drawingView.undo();
+		});
+		redoButton.setOnAction(event -> {
+			drawingView.redo();
+		});
+		clearButton.setOnAction(event -> {
+			drawingView.clear();
+		});
+		drawingView.onStrokeFinished = img -> {
+			useImage(img);
+		};
+
+		GridPane drawingControlsPane = new GridPane();
+		drawingControlsPane.add(drawButton, 0, 0);
+		drawingControlsPane.add(eraserButton, 1, 0);
+		drawingControlsPane.add(undoButton, 2, 0);
+		drawingControlsPane.add(redoButton, 3, 0);
+		drawingControlsPane.add(clearButton, 4, 0);
+
+		deactivateDrawing();
+
+		topPane.setLeft(drawingControlsPane);
+
+		mainPane.add(topPane, 0, 0);
+	}
+
+	private void activateDrawing() {
+		selectionViewer.getChildren().clear();
+		selectionViewer.getChildren().add(drawingView);
+		drawingView.isActive = true;
+
+		undoButton.setDisable(false);
+		redoButton.setDisable(false);
+		clearButton.setDisable(false);
+		eraserButton.setDisable(false);
+	}
+	public void deactivateDrawing() {
+		drawingView.isActive = false;
+		drawButton.setSelected(false);
+
+		undoButton.setDisable(true);
+		redoButton.setDisable(true);
+		clearButton.setDisable(true);
+		eraserButton.setDisable(true);
 	}
 
 	private static final int selectionViewImageWidth = 150;
@@ -95,21 +155,32 @@ public class ResultsViewer {
 		return output;
 	}
 
-	void useImage(Image character) {
-		resultsPane.getChildren().clear();
+	void hideStopButton() {
+		stopButton.setVisible(false);
+	}
+	void showStopButton() {
+		stopButton.setVisible(true);
+	}
 
-		if (!programCaller.running && !mainPane.getChildren().contains(workingPane)) {
-			mainPane.add(workingPane, 0, 0);
-		}
-
+	public void useImageFromDoc(Image character) {
+		deactivateDrawing();
 		selectionViewer.getChildren().clear();
 		addToSelectionView(character);
+		useImage(character);
+	}
 
+	private void useImage(Image character) {
+		resultsPane.getChildren().clear();
+
+		if (!programCaller.running) {
+			showStopButton();
+		}
 
 		programCaller.findChar(character, new MALCaller.Callback() {
 			@Override
 			public void bwImage(Image bwimage) {
 				Platform.runLater(() -> {
+					if (selectionViewer.getChildren().size() > 1) selectionViewer.getChildren().remove(1);
 					addToSelectionView(bwimage);
 				});
 			}
@@ -121,14 +192,15 @@ public class ResultsViewer {
 			}
 			@Override
 			public void failed() {
-				mainPane.getChildren().remove(workingPane);
+				hideStopButton();
+				System.out.println("failed to find results");
 			}
 		});
 	}
 
 	void gotResults(String[] results) {
 
-		mainPane.getChildren().remove(workingPane);
+		hideStopButton();
 
 		for (int i = 0; i < results.length; ++i) {
 
@@ -140,7 +212,14 @@ public class ResultsViewer {
 			imgView.setPreserveRatio(true);
 			if (image.getWidth() > resultsPane.getWidth()) imgView.fitWidthProperty().bind(resultsPane.widthProperty());
 
-			String pageNum = results[i].substring(0, results[i].indexOf(" - "));
+			String pageNum;
+			try {
+				pageNum = results[i].substring(0, results[i].indexOf(" - "));
+			}
+			catch (StringIndexOutOfBoundsException e) {
+				System.out.println("invalid result: " + results[i]);
+				continue;
+			}
 
 			Label label = new Label();
 			label.setText(pageNum);

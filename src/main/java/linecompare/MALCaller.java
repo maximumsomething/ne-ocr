@@ -66,7 +66,7 @@ public class MALCaller {
 				engine.eval("cd " + Main.programDir.getAbsolutePath());
 
 				String skelCommand = "imwrite(scaleSkel(imread('" +
-						tempFile.getAbsolutePath() + "'),  36, 1/3, 0), '" +
+						tempFile.getAbsolutePath() + "'),  200, 1/3, 0), '" +
 						bwimageTempFile + "', 'png')";
 				System.out.println(skelCommand);
 				engine.eval(skelCommand);
