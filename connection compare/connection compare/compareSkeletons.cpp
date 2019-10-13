@@ -156,7 +156,7 @@ bool operator<(ScoreSig a, ScoreSig b) {
 }
 
 void compareConnectionsOfIntersections(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
-									array2D<float>& isectScores, array2D<float>& isectSignificances,
+									array2D<ScoreSig>& isectScores,
 									   std::function<struct ScoreSig (ConnProps,ConnProps)> getScore) {
 	
 	
@@ -235,25 +235,45 @@ void compareConnectionsOfIntersections(AnalyzedSkeleton& inA, AnalyzedSkeleton& 
 				}
 				float scoreBA = totalScoreBA / totalSignificanceBA;
 				
-				isectScores[a][b] = (scoreAB + scoreBA) / 2;
-				isectSignificances[a][b] = (totalSignificanceAB + totalSignificanceBA) / 2;
+				isectScores[a][b] = { (scoreAB + scoreBA) / 2,
+					(totalSignificanceAB + totalSignificanceBA) / 2 };
 				
 			}
 			else {
 				assert(totalScoreAB == 0);
-				isectScores[a][b] = -10;
+				isectScores[a][b] = { -10, 0 };
 			}
 		}
 	}
 }
 
-
-/*ScoreSig compareConnectionPair(ConnectionFabricator& connsA, ConnectionFabricator& connsB) {
+// By comparing intersections based on the amount of similar connecting intersections, the score better reflects larger groups of intersections.
+array2D<ScoreSig> reiterateScores(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
+							array2D<ScoreSig>& isectScores) {
 	
-}*/
+	array2D<ScoreSig> newIsectScores(inA.isects.size(), inB.isects.size());
+	
+	compareConnectionsOfIntersections(inA, inB, newIsectScores,
+									  [&](ConnProps connsA, ConnProps connsB) -> struct ScoreSig {
+										  
+										  
+		return isectScores[connsA.endIsectNum][connsB.endIsectNum];
+	});
+	
+	constexpr float oldWeight = 1;
+	for (int i = 0; i < newIsectScores.total(); ++i) {
+		newIsectScores.linear()[i].score =
+		(newIsectScores.linear()[i].score + isectScores.linear()[i].score*oldWeight) / (1 + oldWeight);
+		
+		newIsectScores.linear()[i].significance =
+		(newIsectScores.linear()[i].significance + isectScores.linear()[i].significance*oldWeight) / (1 + oldWeight);
+	}
+	
+	return newIsectScores;
+}
 
 CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
-							   std::function<void (float *)> visHook) {
+							   std::function<void (ScoreSig *)> visHook) {
 	
 	/*1. For each intersection and endpoint in in1, create a similarity score between it
 	 and all intersections in in2.
@@ -261,10 +281,9 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 	 looking for the one with the most similar intersections.
 	 */
 	
-	array2D<float> isectScores(inA.isects.size(), inB.isects.size());
-	array2D<float> isectSignificances(inA.isects.size(), inB.isects.size());
+	array2D<ScoreSig> isectScores(inA.isects.size(), inB.isects.size());
 	
-	compareConnectionsOfIntersections(inA, inB, isectScores, isectSignificances,
+	compareConnectionsOfIntersections(inA, inB, isectScores,
 									  [](ConnProps connA, ConnProps connB) -> struct ScoreSig {
 		float angleDiff = abs(connA.angle - connB.angle);
 		while (angleDiff > M_PI*2) angleDiff -= M_PI*2;
@@ -286,66 +305,20 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 	
 	visHook(isectScores.data());
 	
-	
-	
-	
-	// By comparing intersections based on the amount of similar connecting intersections, the score better reflects larger groups of intersections.
-	array2D<float> newIsectScores(inA.isects.size(), inB.isects.size());
-	array2D<float> newSignificances(inA.isects.size(), inB.isects.size());
-	
-	compareConnectionsOfIntersections(inA, inB, newIsectScores, newSignificances,
-	[&](ConnProps connsA, ConnProps connsB) -> struct ScoreSig {
-		
-		
-		float score = isectScores[connsA.endIsectNum][connsB.endIsectNum];
-		float sig = isectSignificances[connsA.endIsectNum][connsB.endIsectNum];
-		
-		return  { score, sig };
-	});
-	
-	constexpr float oldWeight = 1;
-	for (int i = 0; i < newIsectScores.total(); ++i) {
-		newIsectScores.linear()[i] = (newIsectScores.linear()[i] + isectScores.linear()[i]*oldWeight) / (1 + oldWeight);
-		newSignificances.linear()[i] = (newSignificances.linear()[i] + isectSignificances.linear()[i]*oldWeight) / (1 + oldWeight);
+	constexpr int reiterations = 3;
+	for (int i = 0; i < reiterations; ++i) {
+		isectScores = reiterateScores(inA, inB, isectScores);
+		visHook(isectScores.data());
 	}
 	
-	
-	visHook(newIsectScores.data());
-	
-	
-	
-	
-	/*std::vector<float> aScores(inA.isects.size()), bScores(inB.isects.size());
-	
-	for (int a = 0; a < inA.isects.size(); ++a) {
-		for (int b = 0; b < inB.isects.size(); ++b) {
-			
-			if (isectScores[a][b] > aScores[a]) aScores[a] = isectScores[a][b];
-			if (isectScores[a][b] > bScores[b]) bScores[b] = isectScores[a][b];
-		}
-	}
-	
-	constexpr int SCORES_TO_REMOVE = 2;
-	
-	std::sort(aScores.begin(), aScores.end());
-	std::sort(bScores.begin(), bScores.end());
-	
-	float totalScore = 0;
-	for (int i = SCORES_TO_REMOVE; i < aScores.size(); ++i) {
-		totalScore += aScores[i];
-	}
-	for (int i = SCORES_TO_REMOVE; i < bScores.size(); ++i) {
-		totalScore += bScores[i];
-	}
-	return { totalScore / (inA.isects.size() + inB.isects.size() - SCORES_TO_REMOVE*2) };*/
 	
 	std::vector<ScoreSig> aScores(inA.isects.size()), bScores(inB.isects.size());
 	
 	for (int a = 0; a < inA.isects.size(); ++a) {
 		for (int b = 0; b < inB.isects.size(); ++b) {
 			
-			if (newIsectScores[a][b] > aScores[a].score) aScores[a] = { newIsectScores[a][b], newSignificances[a][b] };
-			if (newIsectScores[a][b] > bScores[b].score) bScores[b] = { newIsectScores[a][b], newSignificances[a][b] };
+			if (isectScores[a][b].score > aScores[a].score) aScores[a] = isectScores[a][b];
+			if (isectScores[a][b].score > bScores[b].score) bScores[b] = isectScores[a][b];
 		}
 	}
 	
@@ -365,6 +338,10 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 		totalSig += bScores[i].significance;
 	}
 	return { totalScore / totalSig };
+}
+
+CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB) {
+	return compareSkeletons(inA, inB, [](ScoreSig *) {});
 }
 
 
@@ -395,7 +372,7 @@ void visualizeIntersections(cv::Mat skelA, cv::Mat skelB) {
 	
 	float score = compareSkeletons(inA, inB).strength;
 	
-	compareSkeletons(inA, inB, [&](float* isectScores) {
+	compareSkeletons(inA, inB, [&](ScoreSig* isectScores) {
 		
 		cv::Mat outImg((std::max(skelA.rows, skelB.rows) + 40) * scaleFactor,
 					   (skelA.cols + skelB.cols + 60) * scaleFactor,
@@ -413,7 +390,7 @@ void visualizeIntersections(cv::Mat skelA, cv::Mat skelB) {
 		});
 		
 		for (int i = 0; i < inA.isects.size() * inB.isects.size(); ++i) {
-			float score = isectScores[sortIdxes[i]];
+			float score = isectScores[sortIdxes[i]].score;
 			if (score < compThreshold) continue;
 			assert(score <= 1);
 			

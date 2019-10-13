@@ -38,7 +38,7 @@ struct CharPairScore {
 };
 
 AnalyzedSkeleton analyzeSkeleton(cv::Mat skel);
-CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB, std::function<void (float *)> visHook = [](float*){});
+CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB);
 
 void visualizeConnections(cv::Mat skel);
 void visualizeIntersections(cv::Mat skelA, cv::Mat skelB);
