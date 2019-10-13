@@ -87,7 +87,7 @@ void doCompare(const char* coresDir, const char* skelFile, bool doVis) {
 		}
 	}
 	
-	constexpr int outputCount = 40;
+	constexpr int outputCount = 100;
 	
 	
 	std::sort(scoreIndices.begin(), scoreIndices.end(), [&scores](int a, int b) {
