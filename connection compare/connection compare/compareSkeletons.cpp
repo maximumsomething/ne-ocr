@@ -146,7 +146,6 @@ public:
 	}
 };
 
-#define GET2D(arr, x, y, sizY) (arr[y + x*sizY])
 
 struct ScoreSig {
 	float score, significance;
@@ -230,14 +229,18 @@ void compareConnectionsOfIntersections(AnalyzedSkeleton& inA, AnalyzedSkeleton& 
 				
 				float totalScoreBA = 0, totalSignificanceBA = 0;
 				for (int connB = 0; connB < connsB.size(); ++connB) {
-					totalScoreBA += bestScoresBA[connB].score * bestScoresBA[connB].significance;
-					totalSignificanceBA += bestScoresBA[connB].significance;
+					
+					if (bestScoresBA[connB].score != -INFINITY) {
+						totalScoreBA += bestScoresBA[connB].score * bestScoresBA[connB].significance;
+						totalSignificanceBA += bestScoresBA[connB].significance;
+					}
 				}
 				float scoreBA = totalScoreBA / totalSignificanceBA;
 				
 				isectScores[a][b] = { (scoreAB + scoreBA) / 2,
 					(totalSignificanceAB + totalSignificanceBA) / 2 };
 				
+				assert(!isnan(isectScores[a][b].score));
 			}
 			else {
 				assert(totalScoreAB == 0);
@@ -284,7 +287,8 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 	array2D<ScoreSig> isectScores(inA.isects.size(), inB.isects.size());
 	
 	compareConnectionsOfIntersections(inA, inB, isectScores,
-									  [](ConnProps connA, ConnProps connB) -> struct ScoreSig {
+	[](ConnProps connA, ConnProps connB) -> struct ScoreSig {
+		
 		float angleDiff = abs(connA.angle - connB.angle);
 		while (angleDiff > M_PI*2) angleDiff -= M_PI*2;
 		
@@ -296,12 +300,15 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 		float combinedScore = 1 - anglePenalty - straightLengthPenalty/2 - pixLengthPenalty/2;
 		
 		assert(combinedScore <= 1);
+		assert(combinedScore > -10);
+		assert(!isnan(combinedScore));
 		
 		float significance = fmin(connA.straightLength, connB.straightLength);
-								
-								return { combinedScore, significance };
+		
+		return { combinedScore, significance };
 		
 	});
+	
 	
 	visHook(isectScores.data());
 	
@@ -312,7 +319,8 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 	}
 	
 	
-	std::vector<ScoreSig> aScores(inA.isects.size()), bScores(inB.isects.size());
+	std::vector<ScoreSig> aScores(inA.isects.size(), {-INFINITY, -INFINITY}),
+	bScores(inB.isects.size(), {-INFINITY, -INFINITY});
 	
 	for (int a = 0; a < inA.isects.size(); ++a) {
 		for (int b = 0; b < inB.isects.size(); ++b) {
@@ -337,7 +345,10 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 		totalScore += bScores[i].score * bScores[i].significance;
 		totalSig += bScores[i].significance;
 	}
-	return { totalScore / totalSig };
+	float finalStrength = totalScore / totalSig;
+	if (totalSig == 0) finalStrength = -10;
+	assert(!isnan(finalStrength));
+	return { finalStrength };
 }
 
 CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB) {

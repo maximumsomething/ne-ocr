@@ -7,6 +7,21 @@
 
 using namespace cv;
 
+
+// not a thread pool
+template<class Function>
+void threadHose(Function f) {
+	std::vector<std::thread> workers(std::thread::hardware_concurrency() - 1);
+	for (auto worker = workers.begin(); worker < workers.end(); ++worker) {
+		*worker = std::thread(f);
+	}
+	f();
+	for (auto worker = workers.begin(); worker < workers.end(); ++worker) {
+		worker->join();
+	}
+}
+
+
 AnalyzedSkeleton getConnectionsFromFile(const char* filename) {
 	Mat skel = imread(filename, cv::IMREAD_GRAYSCALE);
 	
@@ -27,24 +42,38 @@ AllCompares getAllCompareChars(const char* path) {
 	
 	FILE* names = popen(("ls '"+ std::string(path) + "' | grep .png").c_str(), "r");
 	
-	char* filename = nullptr;
-	size_t bufsize = 0;
 	
-	while (true) {
-		ssize_t namelen = getline(&filename, &bufsize, names);
-		if (namelen < 0) break;
-		filename[namelen - 1] = 0;
+	std::mutex outputLock;
+	
+	
+	threadHose([&]() {
 		
-		//printf("processing %s\n", filename);
+		char* filename = nullptr;
+		size_t bufsize = 0;
+	
+		while (true) {
+			ssize_t namelen = getline(&filename, &bufsize, names);
+			if (namelen < 0) break;
+			filename[namelen - 1] = 0;
+			
+			//printf("processing %s\n", filename);
+			
+			std::string fullname = path + std::string("/") + filename;
+			AnalyzedSkeleton analyzedSkeleton = getConnectionsFromFile(fullname.c_str());
+			
+			
+			outputLock.lock();
+			
+			if (analyzedSkeleton.nomImgSize != -1 && analyzedSkeleton.c.size() > 0 && analyzedSkeleton.isects.size() > 0) {
+				analyzedSkeletons.push_back(analyzedSkeleton);
+				filenames.push_back(filename);
+			}
+			
+			outputLock.unlock();
+		}
+		free(filename);
 		
-		std::string fullname = path + std::string("/") + filename;
-		
-		analyzedSkeletons.push_back(getConnectionsFromFile(fullname.c_str()));
-		
-		if (analyzedSkeletons.back().nomImgSize == -1) analyzedSkeletons.pop_back();
-		else filenames.push_back(filename);
-	}
-	free(filename);
+	});
 	return { analyzedSkeletons, filenames };
 }
 
@@ -61,23 +90,19 @@ void doCompare(const char* coresDir, const char* skelFile, bool doVis) {
 	
 	if (doParallel) {
 		// Thread pool for running compareSkeletons
-		std::vector<std::thread> workers(std::thread::hardware_concurrency());
-		std::atomic<int> charNum(0);
-		for (auto worker = workers.begin(); worker < workers.end(); ++worker) {
-			*worker = std::thread([&]() {
-				while (true) {
-					int i = ++charNum;
-					if (i > compareChars.chars.size()) break;
-					
-					scores[i] = compareSkeletons(thisChar, compareChars.chars[i]);
-					scoreIndices[i] = i;
-				}
-			});
-		}
 		
-		for (auto worker = workers.begin(); worker < workers.end(); ++worker) {
-			worker->join();
-		}
+		std::atomic<int> charNum(0);
+		
+		threadHose([&]() {
+			while (true) {
+				int i = ++charNum;
+				if (i > compareChars.chars.size() - 1) break;
+				
+				scores[i] = compareSkeletons(thisChar, compareChars.chars[i]);
+				assert(!isnan(scores[i].strength));
+				scoreIndices[i] = i;
+			}
+		});
 	}
 	
 	else {
