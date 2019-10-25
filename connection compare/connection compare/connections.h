@@ -9,7 +9,7 @@ struct Connection {
 	// distance from one end to the other
 	//float straightLength;
 	// number of pixels in the connection
-	float pixLength;
+	//float pixLength;
 	// end points of connection
 	// intersection numbers count from 0
 	int intersect1, intersect2;

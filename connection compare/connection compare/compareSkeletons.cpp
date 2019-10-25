@@ -43,7 +43,7 @@ public:
 
 
 struct ConnProps {
-	float straightLength, pixLength, angle;
+	float straightLength, /*pixLength,*/ angle;
 	int startIsectNum, endIsectNum;
 };
 
@@ -79,14 +79,14 @@ class ConnectionFabricator {
 															skel.isects[isectChain[currentDepth]].c[connsOn[currentDepth]], isectChain[currentDepth]);
 		
 		float combinedLength = 0;
-		props.pixLength = 0;
+		//props.pixLength = 0;
 		for (int i = 0; i <= currentDepth; ++i) {
 			auto point1 = skel.isects[isectChain[i]].pos;
 			auto point2 = skel.isects[isectChain[i + 1]].pos;
 			
 			combinedLength += sqrt(pow(point1.x - point2.x, 2) + pow(point1.y - point2.y, 2));
 			//skel.isects[isectChain[i]].c[connsOn[i]].straightLength;
-			props.pixLength += skel.isects[isectChain[i]].c[connsOn[i]].pixLength;
+			//props.pixLength += skel.isects[isectChain[i]].c[connsOn[i]].pixLength;
 		}
 		
 		auto point1 = skel.isects[isectChain[0]].pos;
@@ -295,9 +295,9 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 		
 		float anglePenalty = angleDiff / M_PI;
 		float straightLengthPenalty = abs(connA.straightLength - connB.straightLength);
-		float pixLengthPenalty = abs(connA.pixLength - connB.pixLength);
+		//float pixLengthPenalty = abs(connA.pixLength - connB.pixLength);
 		
-		float combinedScore = 1 - anglePenalty - straightLengthPenalty/2 - pixLengthPenalty/2;
+		float combinedScore = 1 - anglePenalty - straightLengthPenalty/2;// - pixLengthPenalty/2;
 		
 		assert(combinedScore <= 1);
 		assert(combinedScore > -10);
