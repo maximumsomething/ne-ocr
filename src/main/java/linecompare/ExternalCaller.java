@@ -1,6 +1,5 @@
 package linecompare;
 
-import com.mathworks.engine.MatlabEngine;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 
@@ -9,12 +8,10 @@ import java.io.*;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 public class ExternalCaller {
 	private File tmpDir;
-	private Future<MatlabEngine> engineFuture;
 	private Thread callerThread;
 	private Process externalProcess;
 
@@ -29,8 +26,6 @@ public class ExternalCaller {
 			System.out.println("Could not access file system");
 			System.exit(1);
 		}
-
-		engineFuture = MatlabEngine.startMatlabAsync();
 	}
 
 	public interface Callback {
