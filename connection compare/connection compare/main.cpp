@@ -1,4 +1,5 @@
 #include "connections.h"
+#include "createSkeleton.h"
 #include <opencv2/highgui/highgui.hpp>
 #include <string>
 
@@ -125,7 +126,7 @@ void doCompare(const char* coresDir, const char* skelFile, bool doVis) {
 	}
 	
 	// visualize top result
-	if (doVis) visualizeIntersections(imread(skelFile, IMREAD_GRAYSCALE), imread(coresDir + std::string("/") + compareChars.names[scoreIndices[0]], IMREAD_GRAYSCALE));
+	/*if (doVis)*/ visualizeIntersections(imread(skelFile, IMREAD_GRAYSCALE), imread(coresDir + std::string("/") + compareChars.names[scoreIndices[0]], IMREAD_GRAYSCALE));
 	
 }
 
@@ -141,6 +142,20 @@ int main(int argc, const char * argv[]) {
 				return 1;
 			}
 			else doCompare(argv[2], argv[3], false);
+		}
+		else if (verb == "skeletonize") {
+			if (argc < 5) {
+				fprintf(stderr, "usage: skeletonize inputImage outputSkeleton diagonalOutputSize");
+				return 1;
+			}
+			else {
+				int size = atoi(argv[4]);
+				if (size == 0) {
+					fprintf(stderr, "invalid size");
+					return 1;
+				}
+				else createSkeleton(argv[2], argv[3], size);
+			}
 		}
 		else if (verb == "visc") {
 			if (argc < 3) {

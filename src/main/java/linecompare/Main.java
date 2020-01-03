@@ -5,6 +5,7 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 import java.io.File;
+import java.net.URISyntaxException;
 
 public class Main extends Application {
 
@@ -12,7 +13,8 @@ public class Main extends Application {
 	public static SliceViewer sliceViewer;
 	public static ResultsViewer resultsViewer;
 
-	public static File programDir = new File("/Users/max/Documents/MATLAB");
+	// Contains connection_compare executable and the characters from the dictionary
+	public static File programDir;
 
 	//public static String matlabRoot = "/Applications/MATLAB_R2018a.app/";
 
@@ -44,8 +46,35 @@ public class Main extends Application {
 		sliceStage.show();*/
 	}
 
+	private static File findJar() {
+		File jarDir;
+		try {
+			jarDir = new File(Main.class.getProtectionDomain().getCodeSource().getLocation()
+					.toURI()).getParentFile();
+		}
+		catch (URISyntaxException e) {
+			throw new RuntimeException(e);
+		}
+
+		if (new File(jarDir, "Working Files").isDirectory()
+				&& new File(jarDir, "connection_compare").isFile()) {
+			return jarDir;
+		}
+		return null;
+	}
 
 	public static void main(String[] args) {
+		if (args.length > 0) {
+			programDir = new File(args[0]);
+		}
+		else {
+			programDir = findJar();
+		}
+		if (programDir == null) {
+			System.out.println("Invalid program directory. Run the .jar from the program directory or pass it as an argument.");
+			System.exit(1);
+		}
+
 		launch(args);
 	}
 }

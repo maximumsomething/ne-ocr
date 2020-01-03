@@ -25,7 +25,7 @@ public class ResultsViewer {
 
 	private String characterFolder = "Working Files/Extracted Characters";
 
-	MALCaller programCaller = new MALCaller();
+	ExternalCaller programCaller = new ExternalCaller();
 
 	ResultsViewer(Window window) {
 		this.window = window;
@@ -176,7 +176,7 @@ public class ResultsViewer {
 			showStopButton();
 		}
 
-		programCaller.findChar(character, new MALCaller.Callback() {
+		programCaller.findChar(character, new ExternalCaller.Callback() {
 			@Override
 			public void bwImage(Image bwimage) {
 				Platform.runLater(() -> {
