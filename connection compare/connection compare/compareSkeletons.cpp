@@ -44,6 +44,8 @@ public:
 
 struct ConnProps {
 	float straightLength, /*pixLength,*/ angle;
+	 // number between 0 and 1 that is smaller if this connection is similar to others in the same intersection
+	float uniqueness = 1;
 	int startIsectNum, endIsectNum;
 };
 
@@ -144,6 +146,47 @@ public:
 		}
 		return setVals();
 	}
+	
+	// Gets all the connections and sets their uniqueness
+	std::vector<ConnProps> getAll() {
+		std::vector<ConnProps> conns;
+		conns.reserve(10);
+		
+		do {
+			// Make sure there's no exact match
+			for (int i = 0; i < conns.size(); ++i) {
+				if (conns[i].endIsectNum == this->props.endIsectNum) continue;
+			}
+			conns.push_back(props);
+		} while (next());
+		
+		std::vector<float> inverseUniquenesses(conns.size(), 1);
+		
+		for (int i = 0; i < conns.size(); ++i) {
+			for (int j = i + 1; j < conns.size(); ++j) {
+				
+				float angleDiff = abs(conns[i].angle - conns[j].angle);
+				angleDiff = fmod(angleDiff, M_PI);
+				float angleCloseness = 1 - angleDiff / M_PI;
+				
+				float lengthCloseness = ((conns[i].straightLength < conns[j].straightLength) ?
+											   conns[i].straightLength / conns[j].straightLength :
+											   conns[j].straightLength / conns[i].straightLength);
+							
+				
+				// Value between 0 and 1, with 1 being exactly equal.
+				float combinedCloseness = lengthCloseness * angleCloseness;
+				
+				inverseUniquenesses[i] += combinedCloseness;
+				inverseUniquenesses[j] += combinedCloseness;
+			}
+		}
+		for (int i = 0; i < conns.size(); ++i) {
+			conns[i].uniqueness = 1 / inverseUniquenesses[i];
+		}
+		
+		return conns;
+	}
 };
 
 
@@ -160,20 +203,14 @@ void compareConnectionsOfIntersections(AnalyzedSkeleton& inA, AnalyzedSkeleton& 
 	
 	
 	for (int a = 0; a < inA.isects.size(); ++a) {
-		
 		if (inA.isects[a].c.size() == 0) {
 			//fprintf(stderr, "empty intersection!\n");
 			continue;
 		}
 		for (int b = 0; b < inB.isects.size(); ++b) {
-			
 			if (inB.isects[b].c.size() == 0) {
 				//fprintf(stderr, "empty intersection!\n");
 				continue;
-			}
-			
-			if (a == 9 && b == 1) {
-				printf("");
 			}
 			
 			// For each connection in A, get the best match in B
@@ -181,37 +218,33 @@ void compareConnectionsOfIntersections(AnalyzedSkeleton& inA, AnalyzedSkeleton& 
 			float totalSignificanceAB = 0;
 			
 			
-			// Because connsB will be iterated through a bunch of times, it's best to cache it
-			std::vector<ConnProps> connsB;
-			connsB.reserve(10);
-			ConnectionFabricator connFabB(inB, b);
-			do {
-				connsB.push_back(connFabB.props);
-			} while (connFabB.next());
+			std::vector<ConnProps> connsA = ConnectionFabricator(inA, a).getAll();
+			std::vector<ConnProps> connsB = ConnectionFabricator(inB, b).getAll();
 			
 			// For each connection in B, get the best match in A
 			// Contains an entry for each connection in B, containing the best scoring connection from A
 			std::vector<ScoreSig> bestScoresBA(connsB.size(), { -INFINITY, 0 });
 			
-			ConnectionFabricator connsA(inA, a);
-			do {
+			// Loop through all pairs of connections
+			for (int connA = 0; connA < connsA.size(); ++connA) {
+	
 				float bestScoreAB = -INFINITY;
 				float bestSignificanceAB = 0;
 				
-				
 				for (int connB = 0; connB < connsB.size(); ++connB) {
 					
-					auto connRating = getScore(connsA.props, connsB[connB]);
+					auto connRating = getScore(connsA[connA], connsB[connB]);
 					
 					if (connRating.significance != 0) {
 						if (connRating.score > bestScoreAB) {
 							bestScoreAB = connRating.score;
-							bestSignificanceAB = connRating.significance;
+							bestSignificanceAB = connRating.significance * connsA[connA].uniqueness;
 							
 						}
 						if (connRating.score > bestScoresBA[connB].score) {
 							
 							bestScoresBA[connB] = connRating;
+							bestScoresBA[connB].significance *= connsB[connB].uniqueness;
 						}
 					}
 				}
@@ -222,8 +255,9 @@ void compareConnectionsOfIntersections(AnalyzedSkeleton& inA, AnalyzedSkeleton& 
 					totalSignificanceAB += bestSignificanceAB;
 				}
 				
-			} while (connsA.next());
+			}
 			
+			// TODO: check for totalSignificanceBA
 			if (totalSignificanceAB != 0) {
 				float scoreAB = totalScoreAB / totalSignificanceAB;
 				
@@ -290,14 +324,15 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 	[](ConnProps connA, ConnProps connB) -> struct ScoreSig {
 		
 		float angleDiff = abs(connA.angle - connB.angle);
-		while (angleDiff > M_PI*2) angleDiff -= M_PI*2;
-		
+		angleDiff = fmod(angleDiff, M_PI*2);
 		
 		float anglePenalty = angleDiff / M_PI;
-		float straightLengthPenalty = abs(connA.straightLength - connB.straightLength);
-		//float pixLengthPenalty = abs(connA.pixLength - connB.pixLength);
+		float linearLengthPenalty = abs(connA.straightLength - connB.straightLength);
+		float propLengthPenalty = 1 - ((connA.straightLength < connB.straightLength) ?
+									   connA.straightLength / connB.straightLength :
+									   connB.straightLength / connA.straightLength);
 		
-		float combinedScore = 1 - anglePenalty - straightLengthPenalty/2;// - pixLengthPenalty/2;
+		float combinedScore = 1 - anglePenalty - linearLengthPenalty/2;
 		
 		assert(combinedScore <= 1);
 		assert(combinedScore > -10);
@@ -312,7 +347,7 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 	
 	visHook(isectScores.data());
 	
-	constexpr int reiterations = 3;
+	constexpr int reiterations = 1;
 	for (int i = 0; i < reiterations; ++i) {
 		isectScores = reiterateScores(inA, inB, isectScores);
 		visHook(isectScores.data());
