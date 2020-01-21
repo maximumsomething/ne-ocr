@@ -216,78 +216,77 @@ AnalyzedSkeleton analyzeSkeleton(Mat skel) {
 		for (int x = 0; x < skel.cols; ++x) {
 			
 			uint16_t connectionNum = labeledNoIntersections.at<uint16_t>(y, x);
-			if (connectionNum != 0) {
-				//connections[connectionNum - 1].pixLength += 1/nomImgSize;
-				if (numNeighbors<uint16_t>(labeledNoIntersections, x, y, connectionNum) == 2) {
-					// end point of connection
+			if (connectionNum != 0
+				&& numNeighbors<uint16_t>(labeledNoIntersections, x, y, connectionNum) == 2) {
+				// end point of connection
+				
+				uint16_t intersectionNum = getANeighbor(labeledIntersections, x, y);
+				assert(intersectionNum != 0);
+				if (connections[connectionNum - 1].intersect1 < 0) {
 					
-					uint16_t intersectionNum = getANeighbor(labeledIntersections, x, y);
-					assert(intersectionNum != 0);
-					if (connections[connectionNum - 1].intersect1 < 0) {
+					foundConnectionEnds[connectionNum - 1] = Point(x, y);
+					connections[connectionNum - 1].intersect1 = intersectionNum - 1;
+					
+				}
+				else {
+					connections[connectionNum - 1].intersect2 = intersectionNum - 1;
+					
+					// find corners in the connections
+					
+					// Get the connection as a list of pixel coords
+					std::vector<Point2i> connPoints;
+					connPoints.push_back({x, y});
+					while (true) {
+						Point2i prevPix;
+						if (connPoints.size() > 1) prevPix = connPoints[connPoints.size() - 2];
+						else prevPix = { -1, -1 };
 						
-						foundConnectionEnds[connectionNum - 1] = Point(x, y);
-						connections[connectionNum - 1].intersect1 = intersectionNum - 1;
+						Point2i newPix = getANeighborLocation(labeledNoIntersections, connPoints.back(), connectionNum, prevPix);
 						
+						if (newPix.x != -1) connPoints.push_back(newPix);
+						else break;
 					}
-					else {
-						connections[connectionNum - 1].intersect2 = intersectionNum - 1;
+					
+					auto splitSpots = splitCurve(connPoints.begin(), connPoints.end());
+					
+					// Add the intersections found, if any
+					
+					/*for (auto i = splitSpots.begin(); i < splitSpots.end(); ++i) {
+						intersections.push_back({});
+						Intersection& thisI = intersections.back();
+						thisI.pos = ((Point2f) **i) / nomImgSize;
 						
-						// find corners in the connections
+						Connection c1, c2;
+						c1.intersect2 = intersections.size() - 1;
+						c2.intersect1 = intersections.size() - 1;
 						
-						// Get the connection as a list of pixel coords
-						std::vector<Point2i> connPoints;
-						connPoints.push_back({x, y});
-						while (true) {
-							Point2i prevPix;
-							if (connPoints.size() > 1) prevPix = connPoints[connPoints.size() - 2];
-							else prevPix = { -1, -1 };
+						if (i == splitSpots.begin()) c1.intersect1 = connections[connectionNum - 1].intersect2;
+						else c1.intersect1 = intersections.size() - 2;
+						
+						if (i == splitSpots.end() - 1) c2.intersect2 = connections[connectionNum - 1].intersect1;
+						else c2.intersect2 = intersections.size();
+						
+						thisI.c.push_back(c1);
+						thisI.c.push_back(c2);
+					}*/
+					// Don't add the connections in the intersections, just add to the connection array.
+					// The last connection will replace the connection being split. The rest will be appended to the end of the connection array.
+					if (splitSpots.size() > 0) {
+						for (int i = 0; i < splitSpots.size(); ++i) {
+							intersections.push_back({ std::vector<Connection>(), ((Point2f) *splitSpots[i]) / nomImgSize });
 							
-							Point2i newPix = getANeighborLocation(labeledNoIntersections, connPoints.back(), connectionNum, prevPix);
+							Connection c;
+							if (i == 0) c.intersect1 = intersectionNum - 1;
+							else c.intersect1 = intersections.size() - 2;
+							c.intersect2 = intersections.size() - 1;
 							
-							if (newPix.x != -1) connPoints.push_back(newPix);
-							else break;
+							connections.push_back(c);
 						}
-						
-						auto splitSpots = splitCurve(connPoints.begin(), connPoints.end());
-						
-						// Add the intersections found, if any
-						
-						/*for (auto i = splitSpots.begin(); i < splitSpots.end(); ++i) {
-							intersections.push_back({});
-							Intersection& thisI = intersections.back();
-							thisI.pos = ((Point2f) **i) / nomImgSize;
-							
-							Connection c1, c2;
-							c1.intersect2 = intersections.size() - 1;
-							c2.intersect1 = intersections.size() - 1;
-							
-							if (i == splitSpots.begin()) c1.intersect1 = connections[connectionNum - 1].intersect2;
-							else c1.intersect1 = intersections.size() - 2;
-							
-							if (i == splitSpots.end() - 1) c2.intersect2 = connections[connectionNum - 1].intersect1;
-							else c2.intersect2 = intersections.size();
-							
-							thisI.c.push_back(c1);
-							thisI.c.push_back(c2);
-						}*/
-						// Don't add the connections in the intersections, just add to the connection array.
-						// The last connection will replace the connection being split. The rest will be appended to the end of the connection array.
-						if (splitSpots.size() > 0) {
-							for (int i = 0; i < splitSpots.size(); ++i) {
-								intersections.push_back({ std::vector<Connection>(), ((Point2f) *splitSpots[i]) / nomImgSize });
-								
-								Connection c;
-								if (i == 0) c.intersect1 = intersectionNum - 1;
-								else c.intersect1 = intersections.size() - 2;
-								c.intersect2 = intersections.size() - 1;
-								
-								connections.push_back(c);
-							}
-							connections[connectionNum - 1].intersect2 =  intersections.size() - 1;
-						}
+						connections[connectionNum - 1].intersect2 =  intersections.size() - 1;
 					}
 				}
 			}
+			
 			uint16_t thisIntersectionNum = labeledIntersections.at<uint16_t>(y, x);
 			if (thisIntersectionNum != 0) {
 				intersections[thisIntersectionNum - 1].pos = Point2f(x / nomImgSize, y / nomImgSize);
@@ -295,7 +294,8 @@ AnalyzedSkeleton analyzeSkeleton(Mat skel) {
 		}
 	}
 	for (int i = 0; i < connections.size(); ++i) {
-		if (connections[i].intersect1 == -1 || connections[i].intersect2 == -1) {
+		if (connections[i].intersect1 == -1 || connections[i].intersect2 == -1
+			|| connections[i].intersect1 == connections[i].intersect2) {
 			// bad connection
 			//fprintf(stderr, "bad bone\n");
 			connections.erase(connections.begin() + i);

@@ -206,7 +206,7 @@ public class SourceViewer {
 
 		DirectoryChooser chooser = new DirectoryChooser();
 		if (isProgramDir) chooser.setTitle("Select directory with MATLAB program and files");
-		else chooser.setTitle("Select folder with images");
+		else chooser.setTitle("Select folder with images (JPG, PNG, or GIF)");
 
 		File dir = chooser.showDialog(window);
 
@@ -223,7 +223,13 @@ public class SourceViewer {
 			imageDirectory = dir;
 			imageFiles = imageDirectory.listFiles(new FileFilter() {
 				public boolean accept(File pathname) {
-					return !pathname.getName().startsWith(".");
+					String ucname = pathname.getName().toUpperCase();
+					return !ucname.startsWith(".")
+							&& (ucname.endsWith(".JPG")
+					|| ucname.endsWith(".JPEG")
+					|| ucname.endsWith(".JIF")
+					|| ucname.endsWith(".PNG")
+					|| ucname.endsWith(".GIF"));
 				}
 			});
 			Arrays.sort(imageFiles);
@@ -267,7 +273,7 @@ public class SourceViewer {
 	}
 
 	private void loadPage() {
-		if (imageFiles != null) {
+		if (imageFiles != null && imageFiles.length > 0) {
 
 			if (pageNum < 0) pageNum = 0;
 			if (pageNum > imageFiles.length) pageNum = imageFiles.length;

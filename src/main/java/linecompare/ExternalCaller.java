@@ -76,6 +76,7 @@ public class ExternalCaller {
 			File externalExe = new File(Main.programDir, "connection_compare");
 
 			try {
+
 				File imgFile = new File(tmpDir, "imageIn.png");
 				File skelFile = new File(tmpDir, "bwimage.png");
 				ImageIO.write(SwingFXUtils.fromFXImage(character, null), "png", imgFile);

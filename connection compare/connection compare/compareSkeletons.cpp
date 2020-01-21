@@ -389,8 +389,12 @@ void visualizeIntersections(cv::Mat skelA, cv::Mat skelB) {
 					   (skelA.cols + skelB.cols + 60) * scaleFactor,
 					   CV_8UC3, { 0, 0, 0 });
 		
+
+		transferSkel(skelA, outImg, {20, 20}, scaleFactor);
+		transferSkel(skelB, outImg, {skelA.cols + 40, 20}, scaleFactor);
 		
-		float compThreshold = score;
+		
+		float compThreshold = score - 0.1;
 		
 		// draw worse lines first
 		std::vector<int> sortIdxes(inA.isects.size() * inB.isects.size());
@@ -421,8 +425,8 @@ void visualizeIntersections(cv::Mat skelA, cv::Mat skelB) {
 					 cv::Point2f(skelA.cols + 40 + isectB.pos.x * inB.nomImgSize, 20 + isectB.pos.y * inB.nomImgSize) * scaleFactor, bgrColor.at<cv::Vec3b>(0));
 		}
 		
-		transferSkel(skelA, outImg, {20, 20}, scaleFactor);
-		transferSkel(skelB, outImg, {skelA.cols + 40, 20}, scaleFactor);
+		//transferSkel(skelA, outImg, {20, 20}, scaleFactor);
+		//transferSkel(skelB, outImg, {skelA.cols + 40, 20}, scaleFactor);
 		
 		for (int i = 0; i < inA.isects.size(); ++i) {
 			cv::putText(outImg, std::to_string(i),
