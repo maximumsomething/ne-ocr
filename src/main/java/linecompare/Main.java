@@ -56,7 +56,7 @@ public class Main extends Application {
 			throw new RuntimeException(e);
 		}
 
-		if (new File(jarDir, "Working Files").isDirectory()
+		if (new File(jarDir, "Extracted Characters").isDirectory()
 				&& new File(jarDir, "connection_compare").isFile()) {
 			return jarDir;
 		}

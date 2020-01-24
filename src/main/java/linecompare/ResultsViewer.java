@@ -23,7 +23,7 @@ public class ResultsViewer {
 
 	DrawingView drawingView = new DrawingView();
 
-	private String characterFolder = "Working Files/Extracted Characters";
+	private String characterFolder = "Extracted Characters";
 
 	ExternalCaller programCaller = new ExternalCaller();
 

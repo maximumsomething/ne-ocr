@@ -347,7 +347,7 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 	
 	visHook(isectScores.data());
 	
-	constexpr int reiterations = 1;
+	constexpr int reiterations = 3;
 	for (int i = 0; i < reiterations; ++i) {
 		isectScores = reiterateScores(inA, inB, isectScores);
 		visHook(isectScores.data());

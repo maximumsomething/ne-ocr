@@ -81,7 +81,7 @@ AllCompares getAllCompareChars(const char* path) {
 
 constexpr bool doParallel = true;
 
-void doCompare(const char* coresDir, const char* skelFile, bool doVis) {
+void doCompare(const char* coresDir, const char* skelFile, int visNum = 0) {
 	auto compareChars = getAllCompareChars(coresDir);
 	
 	AnalyzedSkeleton thisChar = getConnectionsFromFile(skelFile);
@@ -125,9 +125,11 @@ void doCompare(const char* coresDir, const char* skelFile, bool doVis) {
 		printf("%s\n", compareChars.names[scoreIndices[i]].c_str());
 	}
 	
-	// visualize top result
-	/*if (doVis)*/ visualizeIntersections(imread(skelFile, IMREAD_GRAYSCALE), imread(coresDir + std::string("/") + compareChars.names[scoreIndices[0]], IMREAD_GRAYSCALE));
+	// visualize
+	for (int i = 0; i < visNum; ++i) {
+		visualizeIntersections(imread(skelFile, IMREAD_GRAYSCALE), imread(coresDir + std::string("/") + compareChars.names[scoreIndices[i]], IMREAD_GRAYSCALE));
 	
+	}
 }
 
 
@@ -138,20 +140,20 @@ int main(int argc, const char * argv[]) {
 		
 		if (verb == "compare") {
 			if (argc < 4) {
-				fprintf(stderr, "usage: compare coresDir skeletonImg");
+				fprintf(stderr, "usage: compare coresDir skeletonImg\n");
 				return 1;
 			}
-			else doCompare(argv[2], argv[3], false);
+			else doCompare(argv[2], argv[3], 0);
 		}
 		else if (verb == "skeletonize") {
 			if (argc < 5) {
-				fprintf(stderr, "usage: skeletonize inputImage outputSkeleton diagonalOutputSize");
+				fprintf(stderr, "usage: skeletonize inputImage outputSkeleton diagonalOutputSize\n");
 				return 1;
 			}
 			else {
 				int size = atoi(argv[4]);
 				if (size == 0) {
-					fprintf(stderr, "invalid size");
+					fprintf(stderr, "invalid size\n");
 					return 1;
 				}
 				else createSkeleton(argv[2], argv[3], size);
@@ -159,28 +161,28 @@ int main(int argc, const char * argv[]) {
 		}
 		else if (verb == "visc") {
 			if (argc < 3) {
-				fprintf(stderr, "usage: vis skeletonImg");
+				fprintf(stderr, "usage: vis skeletonImg\n");
 				return 1;
 			}
 			else visualizeConnections(imread(argv[2], cv::IMREAD_GRAYSCALE));
 		}
 		else if (verb == "visi") {
 			if (argc < 4) {
-				fprintf(stderr, "visi skeleton1 skeleton2");
+				fprintf(stderr, "usage: visi skeleton1 skeleton2\n");
 				return 1;
 			}
 			visualizeIntersections(imread(argv[2], IMREAD_GRAYSCALE), imread(argv[3], IMREAD_GRAYSCALE));
 		}
 		else if (verb == "compareAndVisi") {
-			if (argc < 4) {
-				fprintf(stderr, "usage: compare coresDir skeletonImg");
+			if (argc < 5) {
+				fprintf(stderr, "usage: compareAndVisi numVis coresDir skeletonImg\n");
 				return 1;
 			}
-			else doCompare(argv[2], argv[3], true);
+			else doCompare(argv[3], argv[4], atoi(argv[2]));
 		}
-		else fprintf(stderr, "unknown verb %s", argv[1]);
+		else fprintf(stderr, "unknown verb %s\n", argv[1]);
 	}
-	else fprintf(stderr, "no verb");
+	else fprintf(stderr, "no verb\n");
 	
 	
 }

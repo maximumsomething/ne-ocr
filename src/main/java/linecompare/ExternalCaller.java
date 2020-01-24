@@ -113,7 +113,7 @@ public class ExternalCaller {
 
 				if (Thread.interrupted()) throw new InterruptedException();
 
-				String coresPath = Main.programDir.getAbsolutePath() + File.separator + "Working Files" + File.separator + "Extracted Characters" + File.separator + "cores";
+				String coresPath = Main.programDir.getAbsolutePath() + File.separator + "Extracted Characters" + File.separator + "cores";
 
 				List<String> compareCommand = Arrays.asList(
 						externalExe.getPath(),

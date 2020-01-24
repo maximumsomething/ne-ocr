@@ -168,7 +168,7 @@ public class SourceViewer {
 			selectRect.setHeight(height);
 		}
 		else {
-			selectRect.setVisible(false);
+			//selectRect.setVisible(false);
 
 			Image selectedImage = getAreaImage((int) Math.round(x / zoom),
 					(int) Math.round(y / zoom),
@@ -176,8 +176,8 @@ public class SourceViewer {
 					(int) Math.round(height / zoom));
 			pushCharacter(selectedImage);
 
-			selectRect.setWidth(0);
-			selectRect.setHeight(0);
+			//selectRect.setWidth(0);
+			//selectRect.setHeight(0);
 		}
 	}
 
