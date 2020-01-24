@@ -43,9 +43,9 @@ public:
 
 
 struct ConnProps {
-	float straightLength, /*pixLength,*/ angle;
+	double straightLength, /*pixLength,*/ angle;
 	 // number between 0 and 1 that is smaller if this connection is similar to others in the same intersection
-	float uniqueness = 1;
+	double uniqueness = 1;
 	int startIsectNum, endIsectNum;
 };
 
@@ -80,7 +80,7 @@ class ConnectionFabricator {
 		isectChain[currentDepth + 1] = getOtherIntersection(
 															skel.isects[isectChain[currentDepth]].c[connsOn[currentDepth]], isectChain[currentDepth]);
 		
-		float combinedLength = 0;
+		double combinedLength = 0;
 		//props.pixLength = 0;
 		for (int i = 0; i <= currentDepth; ++i) {
 			auto point1 = skel.isects[isectChain[i]].pos;
@@ -94,15 +94,15 @@ class ConnectionFabricator {
 		auto point1 = skel.isects[isectChain[0]].pos;
 		auto point2 = skel.isects[isectChain[currentDepth + 1]].pos;
 		
-		float xDiff = point1.x - point2.x;
-		float yDiff = point1.y - point2.y;
+		double xDiff = point1.x - point2.x;
+		double yDiff = point1.y - point2.y;
 		
-		float directLength = sqrt(xDiff*xDiff + yDiff*yDiff);
+		double directLength = sqrt(xDiff*xDiff + yDiff*yDiff);
 		
 		// make it so multiple-connection chains are limited to mostly straight lines
-		float lengthRatio = directLength / combinedLength;
+		double lengthRatio = directLength / combinedLength;
 		
-		constexpr float minLengthRatio = 0.9;
+		constexpr double minLengthRatio = 0.9;
 		
 		if ((lengthRatio < minLengthRatio || lengthRatio > 1.0/minLengthRatio)) return next();
 		
@@ -160,22 +160,22 @@ public:
 			conns.push_back(props);
 		} while (next());
 		
-		std::vector<float> inverseUniquenesses(conns.size(), 1);
+		std::vector<double> inverseUniquenesses(conns.size(), 1);
 		
 		for (int i = 0; i < conns.size(); ++i) {
 			for (int j = i + 1; j < conns.size(); ++j) {
 				
-				float angleDiff = abs(conns[i].angle - conns[j].angle);
+				double angleDiff = abs(conns[i].angle - conns[j].angle);
 				angleDiff = fmod(angleDiff, M_PI);
-				float angleCloseness = 1 - angleDiff / M_PI;
+				double angleCloseness = 1 - angleDiff / M_PI;
 				
-				float lengthCloseness = ((conns[i].straightLength < conns[j].straightLength) ?
+				double lengthCloseness = ((conns[i].straightLength < conns[j].straightLength) ?
 											   conns[i].straightLength / conns[j].straightLength :
 											   conns[j].straightLength / conns[i].straightLength);
 							
 				
 				// Value between 0 and 1, with 1 being exactly equal.
-				float combinedCloseness = lengthCloseness * angleCloseness;
+				double combinedCloseness = lengthCloseness * angleCloseness;
 				
 				inverseUniquenesses[i] += combinedCloseness;
 				inverseUniquenesses[j] += combinedCloseness;
@@ -191,7 +191,7 @@ public:
 
 
 struct ScoreSig {
-	float score, significance;
+	double score, significance;
 };
 bool operator<(ScoreSig a, ScoreSig b) {
 	return a.score < b.score;
@@ -214,8 +214,8 @@ void compareConnectionsOfIntersections(AnalyzedSkeleton& inA, AnalyzedSkeleton& 
 			}
 			
 			// For each connection in A, get the best match in B
-			float totalScoreAB = 0;
-			float totalSignificanceAB = 0;
+			double totalScoreAB = 0;
+			double totalSignificanceAB = 0;
 			
 			
 			std::vector<ConnProps> connsA = ConnectionFabricator(inA, a).getAll();
@@ -228,8 +228,8 @@ void compareConnectionsOfIntersections(AnalyzedSkeleton& inA, AnalyzedSkeleton& 
 			// Loop through all pairs of connections
 			for (int connA = 0; connA < connsA.size(); ++connA) {
 	
-				float bestScoreAB = -INFINITY;
-				float bestSignificanceAB = 0;
+				double bestScoreAB = -INFINITY;
+				double bestSignificanceAB = 0;
 				
 				for (int connB = 0; connB < connsB.size(); ++connB) {
 					
@@ -259,9 +259,9 @@ void compareConnectionsOfIntersections(AnalyzedSkeleton& inA, AnalyzedSkeleton& 
 			
 			// TODO: check for totalSignificanceBA
 			if (totalSignificanceAB != 0) {
-				float scoreAB = totalScoreAB / totalSignificanceAB;
+				double scoreAB = totalScoreAB / totalSignificanceAB;
 				
-				float totalScoreBA = 0, totalSignificanceBA = 0;
+				double totalScoreBA = 0, totalSignificanceBA = 0;
 				for (int connB = 0; connB < connsB.size(); ++connB) {
 					
 					if (bestScoresBA[connB].score != -INFINITY) {
@@ -269,7 +269,7 @@ void compareConnectionsOfIntersections(AnalyzedSkeleton& inA, AnalyzedSkeleton& 
 						totalSignificanceBA += bestScoresBA[connB].significance;
 					}
 				}
-				float scoreBA = totalScoreBA / totalSignificanceBA;
+				double scoreBA = totalScoreBA / totalSignificanceBA;
 				
 				isectScores[a][b] = { (scoreAB + scoreBA) / 2,
 					(totalSignificanceAB + totalSignificanceBA) / 2 };
@@ -297,7 +297,7 @@ array2D<ScoreSig> reiterateScores(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 		return isectScores[connsA.endIsectNum][connsB.endIsectNum];
 	});
 	
-	constexpr float oldWeight = 1;
+	constexpr double oldWeight = 1;
 	for (int i = 0; i < newIsectScores.total(); ++i) {
 		newIsectScores.linear()[i].score =
 		(newIsectScores.linear()[i].score + isectScores.linear()[i].score*oldWeight) / (1 + oldWeight);
@@ -323,22 +323,22 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 	compareConnectionsOfIntersections(inA, inB, isectScores,
 	[](ConnProps connA, ConnProps connB) -> struct ScoreSig {
 		
-		float angleDiff = abs(connA.angle - connB.angle);
+		double angleDiff = abs(connA.angle - connB.angle);
 		angleDiff = fmod(angleDiff, M_PI*2);
 		
-		float anglePenalty = angleDiff / M_PI;
-		float linearLengthPenalty = abs(connA.straightLength - connB.straightLength);
-		float propLengthPenalty = 1 - ((connA.straightLength < connB.straightLength) ?
+		double anglePenalty = angleDiff / M_PI;
+		double linearLengthPenalty = abs(connA.straightLength - connB.straightLength);
+		double propLengthPenalty = 1 - ((connA.straightLength < connB.straightLength) ?
 									   connA.straightLength / connB.straightLength :
 									   connB.straightLength / connA.straightLength);
 		
-		float combinedScore = 1 - anglePenalty - linearLengthPenalty/2;
+		double combinedScore = 1 - anglePenalty - linearLengthPenalty/2;
 		
 		assert(combinedScore <= 1);
 		assert(combinedScore > -10);
 		assert(!isnan(combinedScore));
 		
-		float significance = fmin(connA.straightLength, connB.straightLength);
+		double significance = fmin(connA.straightLength, connB.straightLength);
 		
 		return { combinedScore, significance };
 		
@@ -347,7 +347,7 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 	
 	visHook(isectScores.data());
 	
-	constexpr int reiterations = 3;
+	constexpr int reiterations = 2;
 	for (int i = 0; i < reiterations; ++i) {
 		isectScores = reiterateScores(inA, inB, isectScores);
 		visHook(isectScores.data());
@@ -370,8 +370,8 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 	
 	constexpr int SCORES_TO_REMOVE = 2;
 	
-	float totalScore = 0;
-	float totalSig = 0;
+	double totalScore = 0;
+	double totalSig = 0;
 	for (int i = SCORES_TO_REMOVE; i < aScores.size(); ++i) {
 		totalScore += aScores[i].score * aScores[i].significance;
 		totalSig += aScores[i].significance;
@@ -380,7 +380,7 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 		totalScore += bScores[i].score * bScores[i].significance;
 		totalSig += bScores[i].significance;
 	}
-	float finalStrength = totalScore / totalSig;
+	double finalStrength = totalScore / totalSig;
 	if (totalSig == 0) finalStrength = -10;
 	assert(!isnan(finalStrength));
 	return { finalStrength };
@@ -416,7 +416,7 @@ void visualizeIntersections(cv::Mat skelA, cv::Mat skelB) {
 	
 	AnalyzedSkeleton inA = analyzeSkeleton(skelA), inB = analyzeSkeleton(skelB);
 	
-	float score = compareSkeletons(inA, inB).strength;
+	double score = compareSkeletons(inA, inB).strength;
 	
 	compareSkeletons(inA, inB, [&](ScoreSig* isectScores) {
 		
@@ -429,7 +429,7 @@ void visualizeIntersections(cv::Mat skelA, cv::Mat skelB) {
 		transferSkel(skelB, outImg, {skelA.cols + 40, 20}, scaleFactor);
 		
 		
-		float compThreshold = score - 0.1;
+		double compThreshold = score - 0.1;
 		
 		// draw worse lines first
 		std::vector<int> sortIdxes(inA.isects.size() * inB.isects.size());
@@ -440,7 +440,7 @@ void visualizeIntersections(cv::Mat skelA, cv::Mat skelB) {
 		});
 		
 		for (int i = 0; i < inA.isects.size() * inB.isects.size(); ++i) {
-			float score = isectScores[sortIdxes[i]].score;
+			double score = isectScores[sortIdxes[i]].score;
 			if (score < compThreshold) continue;
 			assert(score <= 1);
 			
@@ -485,7 +485,7 @@ void visualizeIntersections(cv::Mat skelA, cv::Mat skelB) {
 void visualizeConnections(cv::Mat skel) {
 	AnalyzedSkeleton in = analyzeSkeleton(skel);
 	
-	float nomImgSize = (skel.rows + skel.cols)/2.0;
+	double nomImgSize = (skel.rows + skel.cols)/2.0;
 	
 	for (int i = 0; i < in.isects.size(); ++i) {
 		

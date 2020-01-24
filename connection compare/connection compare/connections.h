@@ -7,9 +7,9 @@
 
 struct Connection {
 	// distance from one end to the other
-	//float straightLength;
+	//double straightLength;
 	// number of pixels in the connection
-	//float pixLength;
+	//double pixLength;
 	// end points of connection
 	// intersection numbers count from 0
 	int intersect1, intersect2;
@@ -23,7 +23,7 @@ struct AnalyzedSkeleton {
 	std::vector<Intersection> isects;
 	std::vector<Connection> c;
 	// all isect positions are divided by this
-	float nomImgSize;
+	double nomImgSize;
 };
 
 /*struct ConnectionList {
@@ -34,7 +34,7 @@ struct AnalyzedSkeleton {
 
 // Used to store multiple values.. now only stores one
 struct CharPairScore {
-	float strength;
+	double strength;
 };
 
 AnalyzedSkeleton analyzeSkeleton(cv::Mat skel);

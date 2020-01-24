@@ -70,12 +70,12 @@ typedef std::vector<Point2i>::const_iterator PointVecIt;
 PointVecIt splitCurveInTwo(PointVecIt begin, PointVecIt last) {
 	
 	assert(last - begin > 4);
-	float bestLength = 0;
+	double bestLength = 0;
 	std::vector<Point2i>::const_iterator bestSpot;
 	
 	for (auto j = begin; j <= last; ++j) {
 		
-		float lengthSum = sqrt(pow(j->x - begin->x, 2) + pow(j->y - begin->y, 2)) +
+		double lengthSum = sqrt(pow(j->x - begin->x, 2) + pow(j->y - begin->y, 2)) +
 						  sqrt(pow(j->x - last->x, 2) + pow(j->y - last->y, 2));
 		
 		if (lengthSum > bestLength) {
@@ -90,16 +90,16 @@ PointVecIt splitCurveInTwo(PointVecIt begin, PointVecIt last) {
 // Returns spots that it's split at
 std::vector<PointVecIt> splitCurve(PointVecIt begin, PointVecIt end) {
 	constexpr int sidePix = 2;
-	constexpr float maxLengthRatio = 0.85;
+	constexpr double maxLengthRatio = 0.85;
 
 	
-	float cumuLength = 0;
+	double cumuLength = 0;
 	for (auto i = begin + sidePix; i < end - sidePix; ++i) {
 		cumuLength += sqrt(pow((i - sidePix)->x - (i + sidePix)->x, 2) +
 						   pow((i - sidePix)->y - (i + sidePix)->y, 2))
 		/ (sidePix * 2);
 		
-		float straightLength = sqrt(pow(i->x - begin->x, 2) + pow(i->y - begin->y, 2));
+		double straightLength = sqrt(pow(i->x - begin->x, 2) + pow(i->y - begin->y, 2));
 		
 		if (straightLength > sidePix*2+1 && cumuLength * maxLengthRatio > straightLength) {
 			
@@ -177,11 +177,11 @@ AnalyzedSkeleton analyzeSkeleton(Mat skel) {
 	//imwrite("/Users/max/Downloads/labeledSkel.png", labeledSkel * 75);
 	
 	
-	/*float nomImgSize = 0;
+	/*double nomImgSize = 0;
 	for (int i = 0; i < skel.total(); ++i) {
 		if (skel.data[i] != 0) ++nomImgSize;
 	}*/
-	float nomImgSize = (skel.rows + skel.cols)/2.0;
+	double nomImgSize = (skel.rows + skel.cols)/2.0;
 	
 	// the skeleton with the intersections removed
 	Mat noIntersections(skel.size(), CV_8U);
