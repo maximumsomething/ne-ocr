@@ -2,3 +2,4 @@
 **/*.xcodeproj/
 target/
 out/
+lib/
