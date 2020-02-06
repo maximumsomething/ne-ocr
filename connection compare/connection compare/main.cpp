@@ -132,6 +132,11 @@ void doCompare(const char* coresDir, const char* skelFile, int visNum = 0) {
 	}
 }
 
+void pruneMatches(const char* matchesDir) {
+	AllCompares matches = getAllCompareChars(matchesDir);
+	
+	
+}
 
 int main(int argc, const char * argv[]) {
 	
@@ -179,6 +184,13 @@ int main(int argc, const char * argv[]) {
 				return 1;
 			}
 			else doCompare(argv[3], argv[4], atoi(argv[2]));
+		}
+		else if (verb == "pruneMatches") {
+			if (argc < 3) {
+				fprintf(stderr, "usage: pruneMatches matchesDir");
+				return 1;
+			}
+			else pruneMatches(argv[2]);
 		}
 		else fprintf(stderr, "unknown verb %s\n", argv[1]);
 	}

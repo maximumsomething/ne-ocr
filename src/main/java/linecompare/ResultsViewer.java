@@ -20,8 +20,9 @@ public class ResultsViewer {
 	Button stopButton = new Button("Stop");
 	ToggleButton drawButton, eraserButton;
 	Button undoButton, redoButton, clearButton;
-
 	DrawingView drawingView = new DrawingView();
+
+	Image character, skeleton;
 
 	private String characterFolder = "Extracted Characters";
 
@@ -170,6 +171,8 @@ public class ResultsViewer {
 	}
 
 	private void useImage(Image character) {
+		this.character = character;
+
 		resultsPane.getChildren().clear();
 
 		if (!programCaller.running) {
@@ -179,6 +182,7 @@ public class ResultsViewer {
 		programCaller.findChar(character, new ExternalCaller.Callback() {
 			@Override
 			public void bwImage(Image bwimage) {
+				ResultsViewer.this.skeleton = bwimage;
 				Platform.runLater(() -> {
 					if (selectionViewer.getChildren().size() > 1) selectionViewer.getChildren().remove(1);
 					addToSelectionView(bwimage);
@@ -202,6 +206,8 @@ public class ResultsViewer {
 
 		hideStopButton();
 
+		Tooltip confirmMatchTooltip = new Tooltip("Confirm match and add to database");
+
 		for (int i = 0; i < results.length; ++i) {
 
 			Image image = new Image((new File(
@@ -212,9 +218,10 @@ public class ResultsViewer {
 			imgView.setPreserveRatio(true);
 			if (image.getWidth() > resultsPane.getWidth()) imgView.fitWidthProperty().bind(resultsPane.widthProperty());
 
+			String thisResult = results[i];
 			String pageNum;
 			try {
-				pageNum = results[i].substring(0, results[i].indexOf(" - "));
+				pageNum = thisResult.substring(0, results[i].indexOf(" - "));
 			}
 			catch (StringIndexOutOfBoundsException e) {
 				System.out.println("invalid result: " + results[i]);
@@ -224,9 +231,20 @@ public class ResultsViewer {
 			Label label = new Label();
 			label.setText(pageNum);
 
+			Button confirmMatch = new Button("✓");
+			confirmMatch.setTooltip(confirmMatchTooltip);
+
+			confirmMatch.setOnAction(event -> {
+				programCaller.addMatch(thisResult, character, skeleton);
+			});
+
+			BorderPane below = new BorderPane();
+			below.setLeft(label);
+			below.setRight(confirmMatch);
+
 			VBox view = new VBox();
 			view.getChildren().add(imgView);
-			view.getChildren().add(label);
+			view.getChildren().add(below);
 
 			resultsPane.getChildren().add(view);
 		}

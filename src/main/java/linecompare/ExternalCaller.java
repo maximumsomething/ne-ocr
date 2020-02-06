@@ -47,6 +47,9 @@ public class ExternalCaller {
 		System.out.println(cmdString);
 	}*/
 
+	private File getCharsDir() {
+		return new File(Main.programDir, "Extracted Characters");
+	}
 	private String escapeForSh(String in) {
 		return "'" + in.replace("'", "\\'") + "'";
 	}
@@ -60,7 +63,7 @@ public class ExternalCaller {
 		return Arrays.asList("sh", "-c", cmdString);
 	}
 
-	void findChar(Image character, Callback callback) {
+	public void findChar(Image character, Callback callback) {
 
 		stop();
 			/*
@@ -113,7 +116,7 @@ public class ExternalCaller {
 
 				if (Thread.interrupted()) throw new InterruptedException();
 
-				String coresPath = Main.programDir.getAbsolutePath() + File.separator + "Extracted Characters" + File.separator + "cores";
+				String coresPath = new File(getCharsDir(), "cores").getAbsolutePath();
 
 				List<String> compareCommand = Arrays.asList(
 						externalExe.getPath(),
@@ -169,7 +172,29 @@ public class ExternalCaller {
 		callerThread.start();
 
 		//gotResults("Page 25 - 1.png\nPage 24 - 1.png\nPage 29 - 7.png\nPage 24 - 3.png\nPage 30 - 4.png\nPage 27 - 4.png");
+	}
+	public void addMatch(String dictChar, Image ogSelection, Image skel) {
 
+		new Thread(() -> {
+			String randId = Integer.toString((int) (Math.random() * Integer.MAX_VALUE)) + ".png";
 
+			File matchesDir = new File(new File(getCharsDir(), "Matches"), dictChar);
+			File ogsDir = new File(matchesDir, "og imgs");
+
+			matchesDir.mkdirs();
+			ogsDir.mkdirs();
+
+			try {
+
+				ImageIO.write(SwingFXUtils.fromFXImage(ogSelection, null), "png", new File(ogsDir, randId));
+				ImageIO.write(SwingFXUtils.fromFXImage(skel, null), "png", new File(matchesDir, randId));
+			}
+			catch (IOException e) {
+				// TODO: handle error
+				e.printStackTrace();
+			}
+		}).start();
 	}
 }
+
+
