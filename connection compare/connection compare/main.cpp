@@ -96,8 +96,8 @@ void doCompare(const char* coresDir, const char* skelFile, int visNum = 0) {
 		
 		threadHose([&]() {
 			while (true) {
-				int i = ++charNum;
-				if (i > compareChars.chars.size() - 1) break;
+				int i = charNum++;
+				if (i >= compareChars.chars.size()) break;
 				
 				scores[i] = compareSkeletons(thisChar, compareChars.chars[i]);
 				assert(!isnan(scores[i].strength));
@@ -113,8 +113,7 @@ void doCompare(const char* coresDir, const char* skelFile, int visNum = 0) {
 		}
 	}
 	
-	constexpr int outputCount = 100;
-	
+	int outputCount = std::min(100, (int) scores.size());
 	
 	std::sort(scoreIndices.begin(), scoreIndices.end(), [&scores](int a, int b) {
 		return scores[a].strength > scores[b].strength;
