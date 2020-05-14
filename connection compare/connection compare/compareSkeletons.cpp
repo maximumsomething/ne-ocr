@@ -215,9 +215,9 @@ void compareConnectionsOfIntersections(AnalyzedSkeleton& inA, AnalyzedSkeleton& 
 				continue;
 			}
 	
-			if (a == 6 && b == 3) {
+			/*if (a == 6 && b == 3) {
 				printf("here!\n");
-			}
+			}*/
 			
 			// For each connection in A, get the best match in B
 			double totalScoreAB = 0;

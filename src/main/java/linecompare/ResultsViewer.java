@@ -2,6 +2,7 @@ package linecompare;
 
 import javafx.application.Platform;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.image.*;
 import javafx.scene.layout.BorderPane;
@@ -219,9 +220,11 @@ public class ResultsViewer {
 			if (image.getWidth() > resultsPane.getWidth()) imgView.fitWidthProperty().bind(resultsPane.widthProperty());
 
 			String thisResult = results[i];
-			String pageNum;
+			String pageNumStr;
 			try {
-				pageNum = thisResult.substring(0, results[i].indexOf(" - "));
+				//pageNumStr = thisResult.substring(0, results[i].indexOf(" - "));
+				int pageNum = Integer.parseInt(thisResult.substring(5, thisResult.indexOf(" - ")));
+				pageNumStr = String.format("Page %d (PDF), %d (Print)", pageNum, pageNum - 31);
 			}
 			catch (StringIndexOutOfBoundsException e) {
 				System.out.println("invalid result: " + results[i]);
@@ -229,18 +232,26 @@ public class ResultsViewer {
 			}
 
 			Label label = new Label();
-			label.setText(pageNum);
+			label.setText(pageNumStr);
 
-			Button confirmMatch = new Button("✓");
-			confirmMatch.setTooltip(confirmMatchTooltip);
 
-			confirmMatch.setOnAction(event -> {
-				programCaller.addMatch(thisResult, character, skeleton);
-			});
+			Node below;
+			if (false) { // If showing database add button
+				Button confirmMatch = new Button("✓");
+				confirmMatch.setTooltip(confirmMatchTooltip);
 
-			BorderPane below = new BorderPane();
-			below.setLeft(label);
-			below.setRight(confirmMatch);
+				confirmMatch.setOnAction(event -> {
+					programCaller.addMatch(thisResult, character, skeleton);
+				});
+
+				BorderPane belowPane = new BorderPane();
+				belowPane.setLeft(label);
+				belowPane.setRight(confirmMatch);
+				below = belowPane;
+			}
+			else {
+				below = label;
+			}
 
 			VBox view = new VBox();
 			view.getChildren().add(imgView);
