@@ -132,10 +132,10 @@ std::vector<PointVecIt> splitCurve(PointVecIt begin, PointVecIt end) {
 
 struct labels {
 	enum l : uint8_t {
-		blank = 0,
-		normal = 1,
-		endpoint = 2,
-		intersection = 3,
+		blank = 0, // Not part of the skeleton.
+		normal = 1, // In the middle of a line of pixels.
+		endpoint = 2, // The end of a line.
+		intersection = 3, // The intersection between 3 or more lines.
 		
 	};
 };
@@ -155,6 +155,7 @@ struct labels {
 
 AnalyzedSkeleton analyzeSkeleton(Mat skel) {
 	
+	// Labels the "on" pixels of the skeleton based on the number of neighbors it has.
 	Mat labeledSkel(skel.size(), CV_8U);
 	
 	for (int y = 0; y < skel.rows; ++y) {
@@ -167,6 +168,7 @@ AnalyzedSkeleton analyzeSkeleton(Mat skel) {
 				else if (neigh == 2) labeledSkel.at<uint8_t>(y,x) = labels::endpoint;
 				else if (neigh > 3) labeledSkel.at<uint8_t>(y,x) = labels::intersection;
 				else {
+					// This skeleton has a single-pixel dot, which should not happen.
 					fprintf(stderr, "dot\n");
 				}
 			}
@@ -176,14 +178,14 @@ AnalyzedSkeleton analyzeSkeleton(Mat skel) {
 //	waitKey(0);
 	//imwrite("/Users/max/Downloads/labeledSkel.png", labeledSkel * 75);
 	
-	
+	// Calculates the "nominal image size", which all dimensions are divided by, necessary to compare differently sized skeletons to each other.
 	/*double nomImgSize = 0;
 	for (int i = 0; i < skel.total(); ++i) {
 		if (skel.data[i] != 0) ++nomImgSize;
 	}*/
 	double nomImgSize = (skel.rows + skel.cols)/2.0;
 	
-	// the skeleton with the intersections removed
+	// the skeleton with the intersections removed, making each connection a seperate group of pixels
 	Mat noIntersections(skel.size(), CV_8U);
 	for (int i = 0; i < noIntersections.total(); ++i) {
 		noIntersections.data[i] = (labeledSkel.data[i] != labels::blank
@@ -191,13 +193,13 @@ AnalyzedSkeleton analyzeSkeleton(Mat skel) {
 	}
 	
 	Mat labeledNoIntersections;
-	// the Mat has 0 as background, and components labeled counting up from 1
-	int numConns = connectedComponents(noIntersections, labeledNoIntersections, 8, CV_16U);
+	// the Mat has 0 as background, and components (connections) labeled counting up from 1
+	int numConns = cv::connectedComponents(noIntersections, labeledNoIntersections, 8, CV_16U);
 	numConns -= 1;
 	
 	//imwrite("/Users/max/Downloads/noi.png", labeledNoIntersections * 5000);
 	
-	
+	// The skeleton with only the intersections
 	Mat intersectionImg(skel.size(), CV_8U);
 	for (int i = 0; i < intersectionImg.total(); ++i) {
 		intersectionImg.data[i] = (labeledSkel.data[i] == labels::endpoint
@@ -205,13 +207,13 @@ AnalyzedSkeleton analyzeSkeleton(Mat skel) {
 	}
 	
 	Mat labeledIntersections;
-	int numIntersections = connectedComponents(intersectionImg, labeledIntersections, 8, CV_16U);
-	numIntersections -= 1;
+	int numIntersections = cv::connectedComponents(intersectionImg, labeledIntersections, 8, CV_16U) - 1;
 	
 	std::vector<Connection> connections(numConns, {-1, -1});
 	std::vector<Intersection> intersections(numIntersections);
 	std::vector<Point> foundConnectionEnds(numConns, Point(-1, -1));
 	
+	// This code goes through the labeledNoIntersections and labeledIntersections Mats and puts the connections and intersections it's found into the arrays above.
 	for (int y = 0; y < skel.rows; ++y) {
 		for (int x = 0; x < skel.cols; ++x) {
 			

@@ -10,6 +10,7 @@ struct Connection {
 	//double straightLength;
 	// number of pixels in the connection
 	//double pixLength;
+	
 	// end points of connection
 	// intersection numbers count from 0
 	int intersect1, intersect2;
@@ -37,6 +38,7 @@ struct CharPairScore {
 	double strength;
 };
 
+// The input skeleton must be 1 pixel wide (via 8-connectivity).
 AnalyzedSkeleton analyzeSkeleton(cv::Mat skel);
 CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB);
 

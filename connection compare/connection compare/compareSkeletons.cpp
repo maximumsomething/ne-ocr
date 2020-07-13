@@ -9,7 +9,7 @@
 
 
 
-
+// This simple 2D array class allows you to address it like arr[x][y], like a plain C array
 template<class innerT, class containerT = std::vector<innerT> >
 class array2D : public containerT {
 	
@@ -50,8 +50,21 @@ struct ConnProps {
 	int startIsectNum, endIsectNum;
 };
 
+struct ScoreSig {
+	double score, significance;
+};
+bool operator<(ScoreSig a, ScoreSig b) {
+	return a.score < b.score;
+}
+
 // Connections from, not only adjacent intersections, but down a chain!
 class ConnectionFabricator {
+	// ConnectionFabricator is a state machine that, each time you call next(), props will contain a new connection. This connection is between the intersection isectChain[0] and some other intersection. It may be composed of multiple connections in the original AnalyzedSkeleton, but it approximates a straight line.
+	
+	// getAll() will call next() as much as needed and return the complete list of connections.
+	// TODO: remove the state machine business and just use getAll()
+	
+	
 	friend void visualizeConnections(cv::Mat skel);
 	
 	static constexpr int maxDepth = 3;
@@ -177,7 +190,7 @@ public:
 											   conns[j].straightLength / conns[i].straightLength);
 							
 				// Value between 0 and 1, with 1 being exactly equal.
-				double combinedCloseness = angleCloseness;// * lengthCloseness;
+				double combinedCloseness = angleCloseness * lengthCloseness;
 				
 				inverseUniquenesses[i] += combinedCloseness;
 				inverseUniquenesses[j] += combinedCloseness;
@@ -191,14 +204,8 @@ public:
 	}
 };
 
-
-struct ScoreSig {
-	double score, significance;
-};
-bool operator<(ScoreSig a, ScoreSig b) {
-	return a.score < b.score;
-}
-
+// Compares every intersection in inA with every intersection in inB. For every pair of connections in the pair of intersections, the getScore function assigns a similarity score and as a "significance" value. Every connection in the intersection from inA is matched with the most similar connection in inB, and a weighted average of these scores based on the sigificance value is taken.
+// The average score of each pair of intersections is returned in the isectScores array.
 void compareConnectionsOfIntersections(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 									array2D<ScoreSig>& isectScores,
 									   std::function<struct ScoreSig (ConnProps,ConnProps)> getScore) {
@@ -290,6 +297,7 @@ void compareConnectionsOfIntersections(AnalyzedSkeleton& inA, AnalyzedSkeleton& 
 	}
 }
 
+// Compares two connections based on their length and angle.
 ScoreSig compareConnPair(ConnProps connA, ConnProps connB) {
 	double angleDiff = abs(connA.angle - connB.angle);
 	angleDiff = fmod(angleDiff, M_PI*2);
@@ -340,6 +348,7 @@ array2D<ScoreSig> reiterateScores(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 	return newIsectScores;
 }
 
+// Uses the best match of each intersection to average a final score.
 CharPairScore totalIsectScores(array2D<ScoreSig> isectScores) {
 	std::vector<ScoreSig> aScores(isectScores.sizX, {-INFINITY, -INFINITY}),
 	bScores(isectScores.sizY, {-INFINITY, -INFINITY});
