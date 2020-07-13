@@ -224,7 +224,12 @@ public class ResultsViewer {
 			try {
 				//pageNumStr = thisResult.substring(0, results[i].indexOf(" - "));
 				int pageNum = Integer.parseInt(thisResult.substring(5, thisResult.indexOf(" - ")));
-				pageNumStr = String.format("Page %d (PDF), %d (Print)", pageNum, pageNum - 31);
+
+				// Page 178 is duplicated in the PDF
+				int printOffset;
+				if (pageNum <= 216) printOffset = 36;
+				else printOffset = 37;
+				pageNumStr = String.format("Page %d (PDF), %d (Print)", pageNum, pageNum - printOffset);
 			}
 			catch (StringIndexOutOfBoundsException e) {
 				System.out.println("invalid result: " + results[i]);
