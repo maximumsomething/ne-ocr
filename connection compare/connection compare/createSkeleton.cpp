@@ -19,6 +19,37 @@ void createSkeleton(const char* inPath, const char* outPath, int diagonalSize) {
 	//adaptiveThreshold(big, bwimage, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 149, 2);
 	threshold(big, bwimage, 0, 255, THRESH_OTSU+THRESH_BINARY_INV);
 	
+	//imshow("Threshold", bwimage);
+	
+	// Open and close the image to eliminate dots
+	
+	
+	// Remove small white dots
+	constexpr float dotArea = 0.001;
+	int maxDotPix = dotArea * bwimage.rows * bwimage.cols;
+	Mat connCompStats, connComp, junkArray;
+	connectedComponentsWithStats(bwimage, connComp, connCompStats, junkArray);
+	
+	for (int y = 0; y < bwimage.rows; ++y)
+	for (int x = 0; x < bwimage.cols; ++x) {
+		int32_t label = connComp.at<int32_t>(y, x);
+		if (label > 0) bwimage.at<uint8_t>(y, x) = (connCompStats.at<int32_t>(label, CC_STAT_AREA) > maxDotPix) ? 255 : 0;
+	}
+	
+	//imshow("opened", bwimage);
+	
+	constexpr float dotSize = 0.03;
+	int strelSize = (int) (dotSize * diagonalSize);
+	Mat strel = getStructuringElement(MORPH_ELLIPSE, Size2i(strelSize, strelSize));
+	
+	//morphologyEx(bwimage, bwimage, MORPH_OPEN, strel);
+	//imshow("Opened", bwimage);
+	//morphologyEx(bwimage, bwimage, MORPH_CLOSE, strel);
+	//imshow("Closed", bwimage);
+	// Remove black dots and connect erroneously disconnected components
+	dilate(bwimage, bwimage, strel);
+	//imshow("Dilated", bwimage);
+	
 	// Add a single black pixel to the sides so skeleton doesn't treat the side specially
 	copyMakeBorder(bwimage, bwimage, 1, 1, 1, 1, BORDER_CONSTANT, 0);
 	
@@ -28,6 +59,8 @@ void createSkeleton(const char* inPath, const char* outPath, int diagonalSize) {
 	ximgproc::thinning(bwimage, skel, ximgproc::THINNING_ZHANGSUEN);
 	ximgproc::thinning(skel, skel, ximgproc::THINNING_GUOHALL);
 	
+	//imshow("skeleton", skel);
+	//waitKey();
 	
 	assert(skel.type() == CV_8U);
 	// Crop the output to the boundaries of the skeleton
