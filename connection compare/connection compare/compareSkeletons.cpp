@@ -401,7 +401,7 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 	if (visHook) visHook(isectScores);
 	
 	//constexpr int reiterations = 10;
-	int reiterations = visHook ? 10 : 10;
+	int reiterations = visHook ? 10 : 2;
 	for (int i = 0; i < reiterations; ++i) {
 		isectScores = reiterateScores(inA, inB, isectScores);
 		if (visHook) visHook(isectScores);

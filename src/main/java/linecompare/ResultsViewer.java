@@ -53,7 +53,7 @@ public class ResultsViewer {
 
 		stopButton.setOnAction(event -> {
 			programCaller.stop();
-			mainPane.getChildren().remove(topPane);
+			hideStopButton();
 		});
 		topPane.setRight(stopButton);
 		stopButton.setVisible(false);

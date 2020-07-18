@@ -38,14 +38,10 @@ void createSkeleton(const char* inPath, const char* outPath, int diagonalSize) {
 	
 	//imshow("opened", bwimage);
 	
-	constexpr float dotSize = 0.03;
+	constexpr float dotSize = 0.015;
 	int strelSize = (int) (dotSize * diagonalSize);
 	Mat strel = getStructuringElement(MORPH_ELLIPSE, Size2i(strelSize, strelSize));
 	
-	//morphologyEx(bwimage, bwimage, MORPH_OPEN, strel);
-	//imshow("Opened", bwimage);
-	//morphologyEx(bwimage, bwimage, MORPH_CLOSE, strel);
-	//imshow("Closed", bwimage);
 	// Remove black dots and connect erroneously disconnected components
 	dilate(bwimage, bwimage, strel);
 	//imshow("Dilated", bwimage);
