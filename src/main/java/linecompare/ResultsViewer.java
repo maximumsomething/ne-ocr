@@ -2,16 +2,26 @@ package linecompare;
 
 import javafx.application.Platform;
 import javafx.geometry.Pos;
+import javafx.scene.Cursor;
 import javafx.scene.Node;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
 import javafx.scene.image.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
+import java.awt.*;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.prefs.Preferences;
 
 public class ResultsViewer {
 	private Window window;
@@ -28,6 +38,10 @@ public class ResultsViewer {
 	private String characterFolder = "Extracted Characters";
 
 	ExternalCaller programCaller = new ExternalCaller();
+
+	private String dictionaryPDF;
+	private Preferences prefs = Preferences.userRoot().node("ResultsViewer");
+	private String DICTIONARY_PDF_PREF = "Dictionary PDF to open";
 
 	ResultsViewer(Window window) {
 		this.window = window;
@@ -203,6 +217,46 @@ public class ResultsViewer {
 		});
 	}
 
+	boolean isPDF(String filename) {
+		int i = filename.lastIndexOf('.');
+		String ext = i > 0 ? filename.substring(i + 1) : "";
+		return ext.toUpperCase().equals("PDF");
+	}
+
+	void openPDFToPage(int pageNum) {
+		if (dictionaryPDF == null) dictionaryPDF = prefs.get(DICTIONARY_PDF_PREF, null);
+		File dictionaryPDFFile;
+		if (dictionaryPDF == null || !(dictionaryPDFFile = new File(dictionaryPDF)).isFile()) {
+
+			FileChooser chooser = new FileChooser();
+			chooser.setTitle("Select dictionary PDF to open");
+			chooser.getExtensionFilters().setAll(new FileChooser.ExtensionFilter("PDF", "*.pdf", "*.PDF"));
+
+			dictionaryPDFFile = chooser.showOpenDialog(window);
+			if (dictionaryPDFFile == null || !dictionaryPDFFile.isFile() || !isPDF(dictionaryPDFFile.getName())) return;
+			dictionaryPDF = dictionaryPDFFile.getAbsolutePath();
+
+			prefs.put(DICTIONARY_PDF_PREF, dictionaryPDF);
+		}
+
+		// Desktop.browse() is broken for file:/// URLs that contain anchors (at least on MacOS)
+		String tempHTML = "<meta http-equiv=\"refresh\" content=\"0; URL='"
+				+ dictionaryPDFFile.toURI().toString()
+				+ "#page="+pageNum+"'\" />";
+		try {
+			File tempFile = File.createTempFile("redirect",".html");
+			FileWriter tempFileWriter = new FileWriter(tempFile);
+			tempFileWriter.write(tempHTML);
+			tempFileWriter.close();
+
+			Desktop.getDesktop().open(tempFile);
+		}
+		//catch (URISyntaxException e) { throw new RuntimeException(e); }
+		catch (IOException e) {
+			new Alert(Alert.AlertType.ERROR, "Could not open PDF", ButtonType.OK);
+		}
+	}
+
 	void gotResults(String[] results) {
 
 		hideStopButton();
@@ -221,9 +275,10 @@ public class ResultsViewer {
 
 			String thisResult = results[i];
 			String pageNumStr;
+			int pageNum;
 			try {
 				//pageNumStr = thisResult.substring(0, results[i].indexOf(" - "));
-				int pageNum = Integer.parseInt(thisResult.substring(5, thisResult.indexOf(" - ")));
+				pageNum = Integer.parseInt(thisResult.substring(5, thisResult.indexOf(" - ")));
 
 				// Page 178 is duplicated in the PDF
 				int printOffset;
@@ -258,11 +313,14 @@ public class ResultsViewer {
 				below = label;
 			}
 
-			VBox view = new VBox();
-			view.getChildren().add(imgView);
-			view.getChildren().add(below);
+			VBox resultView = new VBox();
+			resultView.getChildren().add(imgView);
+			resultView.getChildren().add(below);
 
-			resultsPane.getChildren().add(view);
+			resultView.setOnMouseClicked(event -> openPDFToPage(pageNum));
+			resultView.setCursor(Cursor.HAND);
+
+			resultsPane.getChildren().add(resultView);
 		}
 	}
 }

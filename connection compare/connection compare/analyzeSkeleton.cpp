@@ -12,6 +12,7 @@
 using namespace cv;
 
 // number of neighbors including self
+// The data in img is of type T
 template<typename T>
 int numNeighbors(Mat& img, int x, int y, int neighborsEqual) {
 	Rect bounds = Rect(x-1, y-1, 3, 3) & Rect(0, 0, img.cols, img.rows);
