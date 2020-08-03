@@ -221,10 +221,6 @@ void compareConnectionsOfIntersections(AnalyzedSkeleton& inA, AnalyzedSkeleton& 
 				//fprintf(stderr, "empty intersection!\n");
 				continue;
 			}
-	
-			/*if (a == 6 && b == 3) {
-				printf("here!\n");
-			}*/
 			
 			// For each connection in A, get the best match in B
 			double totalScoreAB = 0;
@@ -396,6 +392,16 @@ CharPairScore compareSkeletons(AnalyzedSkeleton& inA, AnalyzedSkeleton& inB,
 	array2D<ScoreSig> isectScores(inA.isects.size(), inB.isects.size());
 	
 	compareConnectionsOfIntersections(inA, inB, isectScores, &compareConnPair);
+	
+	// Take position of intersections into account
+	constexpr double isectDistanceWeight = 0.3;
+	for (int a = 0; a < inA.isects.size(); ++a)
+	for (int b = 0; b < inB.isects.size(); ++b) {
+		auto pointDiff = inA.isects[a].pos - inB.isects[b].pos;
+		auto pointDist = sqrt(pointDiff.x*pointDiff.x + pointDiff.y*pointDiff.y);
+		
+		isectScores[a][b].score = isectScores[a][b].score * (1 - isectDistanceWeight) + isectDistanceWeight * (1 - pointDist); 
+	}
 	
 	
 	if (visHook) visHook(isectScores);
