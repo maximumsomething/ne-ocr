@@ -15,7 +15,18 @@ public class ExternalCaller {
 	private Thread callerThread;
 	private Process externalProcess;
 
-	public boolean running = false;
+	public volatile double dotSize = 0.03, holeSize = 0.015;
+
+	enum State {
+		SKELETONIZING,
+		RESKELETONIZING,
+		COMPARING,
+		IDLE
+	}
+	volatile State state = State.IDLE;
+
+	public Callback callback;
+	public Image character;
 
 	ExternalCaller() {
 
@@ -34,8 +45,12 @@ public class ExternalCaller {
 		void failed();
 	}
 
+	public boolean running() {
+		return state != State.IDLE;
+	}
+
 	public void stop() {
-		if (running) callerThread.interrupt();
+		if (state != State.IDLE) callerThread.interrupt();
 		if (externalProcess != null) externalProcess.destroy();
 	}
 
@@ -63,17 +78,62 @@ public class ExternalCaller {
 		return Arrays.asList("sh", "-c", cmdString);
 	}
 
+	public void changeSkelParams(double dotSize, double holeSize) {
+		synchronized (this) {
+			this.dotSize = dotSize;
+			this.holeSize = holeSize;
+			if (state == State.SKELETONIZING) state = State.RESKELETONIZING;
+			else findChar();
+		}
+	}
+
+	/*// This class is needed so that if the params change, the previous skeleton will be waited for before starting a new one, but selecting a new character will terminate the current computation.
+	private class SkeletonizerCaller {
+		public double dotSize, holeSize;
+		public String externalExe, imgPath, skelPath;
+		ExternalCaller.Callback callback;
+		SkeletonizerCaller(double dotSize, double holeSize, String externalExe, String imgPath, String skelPath, ExternalCaller.Callback callback) {
+			this.dotSize = dotSize;
+			this.holeSize = holeSize;
+			this.externalExe = externalExe;
+			this.imgPath = imgPath;
+			this.skelPath = skelPath;
+			this.callback = callback;
+		}
+
+		void go() throws IOException, InterruptedException {
+			List<String> skelCommand = Arrays.asList(
+					externalExe,
+					"skeletonize",
+					"-outSize=200",
+					String.format("-dotSize=%f", dotSize),
+					String.format("-holeSize=%f", holeSize),
+					imgPath,
+					skelPath);
+
+			externalProcess = new ProcessBuilder()
+					.command(callThroughShell(skelCommand)).inheritIO().start();
+			externalProcess.waitFor();
+
+			//callback.bwImage(new Image();
+
+			System.out.println("skeleton: " + skelFile);
+		}
+		void changeParams() {
+
+		}
+	}*/
+
 	public void findChar(Image character, Callback callback) {
-
+		this.character = character;
+		this.callback = callback;
+		findChar();
+	}
+	public void findChar() {
 		stop();
-			/*
-			Process process = new ProcessBuilder(
-					Main.programDir.getAbsolutePath() + File.separator + "findchar",
-					tempFile.getAbsolutePath()).start();*/
-
 
 		callerThread = new Thread(() -> {
-			running = true;
+			state = State.SKELETONIZING;
 			StringWriter commandOutput = new StringWriter();
 
 			File externalExe = new File(Main.programDir, "connection_compare");
@@ -84,37 +144,37 @@ public class ExternalCaller {
 				File skelFile = new File(tmpDir, "bwimage.png");
 				ImageIO.write(SwingFXUtils.fromFXImage(character, null), "png", imgFile);
 
-				/*MatlabEngine engine = engineFuture.get();
-
-				engine.eval("cd " + Main.programDir.getAbsolutePath());
-
-				String skelCommand = "imwrite(scaleSkel(imread('" +
-						tempFile.getAbsolutePath() + "'),  200, 1/3, 0), '" +
-						skelFile + "', 'png')";
-				System.out.println(skelCommand);
-				engine.eval(skelCommand);*/
-
 				System.out.println("character: " + imgFile);
 
-				// Compute the skeleton
-				// If the process is called directly instead of through the shell, there are dyld errors.
+				do {
 
-				List<String> skelCommand = Arrays.asList(
-						externalExe.getAbsolutePath(),
-						"skeletonize",
-						imgFile.getAbsolutePath(),
-						skelFile.getAbsolutePath(),
-						"200");
+					List<String> skelCommand;
+					synchronized (ExternalCaller.this) {
+						state = State.SKELETONIZING;
+						// Compute the skeleton
+						// If the process is called directly instead of through the shell, there are dyld errors.
+						skelCommand = Arrays.asList(
+								externalExe.getAbsolutePath(),
+								"skeletonize",
+								"-outSize=200",
+								String.format("-dotSize=%f", dotSize),
+								String.format("-holeSize=%f", holeSize),
+								imgFile.getAbsolutePath(),
+								skelFile.getAbsolutePath());
+					}
 
-				externalProcess = new ProcessBuilder()
-						.command(callThroughShell(skelCommand)).inheritIO().start();
-				externalProcess.waitFor();
+					externalProcess = new ProcessBuilder()
+							.command(callThroughShell(skelCommand)).inheritIO().start();
+					externalProcess.waitFor();
 
-				callback.bwImage(new Image(skelFile.toURI().toString()));
+					callback.bwImage(new Image(skelFile.toURI().toString()));
 
-				System.out.println("skeleton: " + skelFile);
+					System.out.println("skeleton: " + skelFile);
 
-				if (Thread.interrupted()) throw new InterruptedException();
+					if (Thread.interrupted()) throw new InterruptedException();
+				} while (state == State.RESKELETONIZING);
+
+				state = State.COMPARING;
 
 				String coresPath = new File(getCharsDir(), "cores").getAbsolutePath();
 
@@ -151,7 +211,7 @@ public class ExternalCaller {
 				callback.failed();
 			}
 			finally {
-				running = false;
+				state = State.IDLE;
 			}
 
 			/*try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {

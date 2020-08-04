@@ -137,6 +137,62 @@ void pruneMatches(const char* matchesDir) {
 	
 }
 
+const char* isArgOption(const char* arg, const char* option) {
+	int optLen = strlen(option);
+	if (strncmp(arg, option, optLen) == 0) {
+		// arg starts with option
+		return arg + optLen;
+	}
+	else return nullptr;
+}
+bool setOptIfMatch(const char* arg, const char* optionName, float* option){
+	const char* optionStr = isArgOption(arg, optionName);
+	if (optionStr != nullptr) {
+		try {
+			*option = std::stof(optionStr);
+		}
+		catch(...) {
+			fprintf(stderr, "Invalid argument %s", arg);
+			return false;
+		}
+		return true;
+	}
+	else return false;
+}
+// args don't include executable or 'skeletonize' verb
+int parseSkeletonizeArgs(const char** argv, int argc) {
+	constexpr char usageString[] = "usage: skeletonize -outSize=<expected diagonal size> [-dotSize=X] [-holeSize=X] inputImage outputSkeleton\n";
+	if (argc < 5) {
+		fprintf(stderr, usageString);
+		return 1;
+	}
+	else {
+		const char* inPath = nullptr, *outPath = nullptr;
+		float outSize = 0, dotSize = 0.03, holeSize = 0.015;
+		
+		for (int i = 0; i < argc; ++i) {
+			
+			bool isOpt = setOptIfMatch(argv[i], "-outSize=", &outSize)
+				      || setOptIfMatch(argv[i], "-dotSize=", &dotSize)
+			          || setOptIfMatch(argv[i], "-holeSize=", &holeSize);
+	
+			if (!isOpt) {
+				if (inPath == nullptr) inPath = argv[i];
+				else if (outPath == nullptr) outPath = argv[i];
+				else fprintf(stderr, "Invalid argument %s", argv[i]);
+			}
+		}
+		
+		if (inPath == nullptr || outPath == nullptr || outSize == 0) {
+			fprintf(stderr, usageString);
+			return 1;
+		}
+		createSkeleton(inPath, outPath, outSize, dotSize, holeSize);
+		
+		return 0;
+	}
+}
+
 int main(int argc, const char * argv[]) {
 	
 	if (argc >= 2) {
@@ -150,18 +206,8 @@ int main(int argc, const char * argv[]) {
 			else doCompare(argv[2], argv[3], 0);
 		}
 		else if (verb == "skeletonize") {
-			if (argc < 5) {
-				fprintf(stderr, "usage: skeletonize inputImage outputSkeleton diagonalOutputSize\n");
-				return 1;
-			}
-			else {
-				int size = atoi(argv[4]);
-				if (size == 0) {
-					fprintf(stderr, "invalid size\n");
-					return 1;
-				}
-				else createSkeleton(argv[2], argv[3], size);
-			}
+			return parseSkeletonizeArgs(&(argv[2]), argc-2);
+			
 		}
 		else if (verb == "visc") {
 			if (argc < 3) {

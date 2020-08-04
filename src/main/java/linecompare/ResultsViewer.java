@@ -10,10 +10,7 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.*;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
@@ -21,6 +18,7 @@ import java.awt.*;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.prefs.Preferences;
 
 public class ResultsViewer {
@@ -29,6 +27,11 @@ public class ResultsViewer {
 	private VBox resultsPane = new VBox(5);
 	private HBox selectionViewer = new HBox(3);
 	Button stopButton = new Button("Stop");
+
+	private ToggleButton skeletonSettingsButton;
+	Slider dotSizeSlider, holeSizeSlider;
+	double savedDotSize = 3, savedHoleSize = 1.5;
+
 	ToggleButton drawButton, eraserButton;
 	Button undoButton, redoButton, clearButton;
 	DrawingView drawingView = new DrawingView();
@@ -55,22 +58,34 @@ public class ResultsViewer {
 		resultsScroll.setPrefViewportWidth(10000000000.0);
 
 		mainPane.setVgap(10);
-		mainPane.add(selectionViewer, 0, 1);
-		mainPane.add(resultsScroll, 0, 2);
+		mainPane.add(selectionViewer, 0, 2);
+		mainPane.add(resultsScroll, 0, 3);
 
 		/*Label workingLabel = new Label();
 		workingLabel.setText("Working...");
 		workingLabel.setFont(Font.font(14));
 		topPane.setLeft(workingLabel);*/
 
-		BorderPane topPane = new BorderPane();
-
 		stopButton.setOnAction(event -> {
 			programCaller.stop();
 			hideStopButton();
 		});
-		topPane.setRight(stopButton);
 		stopButton.setVisible(false);
+
+		dotSizeSlider = new Slider(0, 5, 3);
+		HBox dotSizeSliderBox = setupSkeletonSlider(dotSizeSlider);
+		Label dotSliderLabel = new Label("Dot Size");
+		holeSizeSlider = new Slider(0, 5, 1.5);
+		HBox holeSizeSliderBox = setupSkeletonSlider(holeSizeSlider);
+		Label holeSliderLabel = new Label("Hole size");
+
+		VBox sliderPane = new VBox(dotSliderLabel, dotSizeSliderBox, holeSliderLabel, holeSizeSliderBox);
+
+		skeletonSettingsButton = new ToggleButton("⚙︎");
+		skeletonSettingsButton.setOnAction(event -> {
+			if (skeletonSettingsButton.isSelected()) mainPane.add(sliderPane, 0, 1);
+			else mainPane.getChildren().remove(sliderPane);
+		});
 
 		drawButton = new ToggleButton("✎");
 		drawButton.setTooltip(new Tooltip("Draw character"));
@@ -107,10 +122,50 @@ public class ResultsViewer {
 		drawingControlsPane.add(clearButton, 4, 0);
 
 		deactivateDrawing();
-
+		BorderPane topPane = new BorderPane();
+		topPane.setRight(new HBox(stopButton, skeletonSettingsButton));
 		topPane.setLeft(drawingControlsPane);
 
 		mainPane.add(topPane, 0, 0);
+	}
+
+	private HBox setupSkeletonSlider(Slider slider) {
+		slider.setShowTickLabels(true);
+		slider.setBlockIncrement(0.5);
+		Label valueLabel = new Label(Double.toString(slider.getValue()) + "%");
+		slider.valueProperty().addListener((observable, oldValue, newValue) -> {
+			if (slider.isDisabled()) return;
+			valueLabel.setText(new DecimalFormat("#.##").format(newValue) + "%");
+			skelSettingsSliderChanged();
+		});
+		slider.setPrefWidth(10000);
+		valueLabel.setMinWidth(50);
+		return new HBox(slider, valueLabel);
+	}
+
+	private void skelSettingsSliderChanged() {
+		programCaller.changeSkelParams(dotSizeSlider.getValue()/100, holeSizeSlider.getValue()/100);
+		resultsPane.getChildren().clear();
+		showStopButton();
+	}
+
+	private void disableSkelSettingsSliders() {
+		if (!dotSizeSlider.isDisabled()) {
+			savedDotSize = dotSizeSlider.getValue();
+			savedHoleSize = holeSizeSlider.getValue();
+			dotSizeSlider.setDisable(true);
+			dotSizeSlider.setValue(0);
+			holeSizeSlider.setDisable(true);
+			holeSizeSlider.setValue(0);
+		}
+	}
+	private void enableSkelSettingsSliders() {
+		if (dotSizeSlider.isDisabled()) {
+			dotSizeSlider.setValue(savedDotSize);
+			dotSizeSlider.setDisable(false);
+			holeSizeSlider.setValue(savedHoleSize);
+			holeSizeSlider.setDisable(false);
+		}
 	}
 
 	private void activateDrawing() {
@@ -122,6 +177,8 @@ public class ResultsViewer {
 		redoButton.setDisable(false);
 		clearButton.setDisable(false);
 		eraserButton.setDisable(false);
+
+		disableSkelSettingsSliders();
 	}
 	public void deactivateDrawing() {
 		drawingView.isActive = false;
@@ -131,6 +188,8 @@ public class ResultsViewer {
 		redoButton.setDisable(true);
 		clearButton.setDisable(true);
 		eraserButton.setDisable(true);
+
+		enableSkelSettingsSliders();
 	}
 
 	private static final int selectionViewImageWidth = 150;
@@ -190,9 +249,7 @@ public class ResultsViewer {
 
 		resultsPane.getChildren().clear();
 
-		if (!programCaller.running) {
-			showStopButton();
-		}
+		showStopButton();
 
 		programCaller.findChar(character, new ExternalCaller.Callback() {
 			@Override

@@ -6,7 +6,7 @@
 
 using namespace cv;
 
-void createSkeleton(const char* inPath, const char* outPath, int diagonalSize) {
+void createSkeleton(const char* inPath, const char* outPath, float diagonalSize, float dotSize, float holeSize) {
 	
 	Mat in = cv::imread(inPath, IMREAD_GRAYSCALE);
 	Mat big;
@@ -24,27 +24,30 @@ void createSkeleton(const char* inPath, const char* outPath, int diagonalSize) {
 	// Open and close the image to eliminate dots
 	
 	
-	// Remove small white dots
-	constexpr float dotArea = 0.001;
-	int maxDotPix = dotArea * bwimage.rows * bwimage.cols;
-	Mat connCompStats, connComp, junkArray;
-	connectedComponentsWithStats(bwimage, connComp, connCompStats, junkArray);
-	
-	for (int y = 0; y < bwimage.rows; ++y)
-	for (int x = 0; x < bwimage.cols; ++x) {
-		int32_t label = connComp.at<int32_t>(y, x);
-		if (label > 0) bwimage.at<uint8_t>(y, x) = (connCompStats.at<int32_t>(label, CC_STAT_AREA) > maxDotPix) ? 255 : 0;
+	if (dotSize > 0) {
+		// Remove small white dots
+		float dotArea = dotSize * dotSize;
+		int maxDotPix = dotArea * bwimage.rows * bwimage.cols;
+		Mat connCompStats, connComp, junkArray;
+		connectedComponentsWithStats(bwimage, connComp, connCompStats, junkArray);
+		
+		for (int y = 0; y < bwimage.rows; ++y)
+		for (int x = 0; x < bwimage.cols; ++x) {
+			int32_t label = connComp.at<int32_t>(y, x);
+			if (label > 0) bwimage.at<uint8_t>(y, x) = (connCompStats.at<int32_t>(label, CC_STAT_AREA) > maxDotPix) ? 255 : 0;
+		}
 	}
 	
 	//imshow("opened", bwimage);
 	
-	constexpr float dotSize = 0.015;
-	int strelSize = (int) (dotSize * diagonalSize);
-	Mat strel = getStructuringElement(MORPH_ELLIPSE, Size2i(strelSize, strelSize));
-	
-	// Remove black dots and connect erroneously disconnected components
-	dilate(bwimage, bwimage, strel);
-	//imshow("Dilated", bwimage);
+	int strelSize = (int) (holeSize * diagonalSize);
+	if (strelSize > 0) {
+		Mat strel = getStructuringElement(MORPH_ELLIPSE, Size2i(strelSize, strelSize));
+		
+		// Remove black dots and connect erroneously disconnected components
+		dilate(bwimage, bwimage, strel);
+		//imshow("Dilated", bwimage);
+	}
 	
 	// Add a single black pixel to the sides so skeleton doesn't treat the side specially
 	copyMakeBorder(bwimage, bwimage, 1, 1, 1, 1, BORDER_CONSTANT, 0);
@@ -72,6 +75,11 @@ void createSkeleton(const char* inPath, const char* outPath, int diagonalSize) {
 				if (x > right) right = x;
 			}
 		}
+	}
+	if (top == INT_MAX) {
+		fprintf(stderr, "Error: blank skeleton\n");
+		imwrite(outPath, skel);
+		return;
 	}
 	Mat cropSkel = skel(cv::Rect(left, top, right - left + 1, bottom - top + 1));
 	
