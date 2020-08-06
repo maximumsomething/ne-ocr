@@ -12,7 +12,7 @@
     <orderEntry type="jdk" jdkName="1.8" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" exported="" name="org.apache.pdfbox:pdfbox:2.0.8" level="project" />
-    <orderEntry type="module-library" exported="">
+    <orderEntry type="module-library">
       <library>
         <CLASSES>
           <root url="jar:///Applications/MATLAB_R2019a.app/extern/engines/java/jar/engine.jar!/" />
