@@ -1,0 +1,5 @@
+Mac instructions:
+
+Build artifact in intellij.
+Build connection_compare release build. 
+Put Extracted Characters directory, line_compare.jar, and connection_compare executable in Charfind/Resources.
