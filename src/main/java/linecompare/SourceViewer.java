@@ -8,10 +8,6 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.TextArea;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -28,11 +24,12 @@ import javafx.stage.Window;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
 
-import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.prefs.Preferences;
 
@@ -327,18 +324,19 @@ public class SourceViewer {
 	// Super ugly hack
 	//https://stackoverflow.com/questions/28817460/how-do-i-find-out-whether-my-program-is-running-on-a-retina-screen
 	private double getScreenScale(Screen screen) {
-		return GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration().getDefaultTransform().getScaleX();
-		/*try {
-			Method m = Screen.class.getDeclaredMethod("getScale");
+		try {
+			Method m = Screen.class.getDeclaredMethod("getRenderScale");
 			m.setAccessible(true);
 			return ((Float) m.invoke(screen)).doubleValue();
 		}
-		catch (NoSuchMethodException|SecurityException|IllegalAccessException|IllegalArgumentException|InvocationTargetException e) {
+		catch (NoSuchMethodException|SecurityException|IllegalAccessException|IllegalArgumentException| InvocationTargetException e) {
 			System.err.println("Error getting screen dpi");
 			e.printStackTrace();
 			return 1;
-		}*/
+		}
 	}
+
+	Thread pdfRenderThread;
 
 	private void loadPage() {
 		if (pageNum < 0) pageNum = 0;
@@ -355,14 +353,18 @@ public class SourceViewer {
 		else if (PDFDoc != null) {
 			imageIndicatorOverlay.setText("Loading...");
 			double screenScale = getScreenScale(Screen.getPrimary());
-			new Thread(() -> {
-
+			if (pdfRenderThread != null && pdfRenderThread.isAlive()) {
+				// I think this is safe
+				pdfRenderThread.stop();
+			}
+			pdfRenderThread = new Thread(() -> {
 				try {
 					BufferedImage awtImage = new PDFRenderer(PDFDoc).renderImage(pageNum, (float) (zoom * screenScale));
 					Image fxImage = SwingFXUtils.toFXImage(awtImage, null);
 					Platform.runLater(() -> {
 						pageImage = fxImage;
 						pageView.setImage(pageImage);
+						updateZoom();
 						imageIndicatorOverlay.setText("");
 					});
 				}
@@ -371,8 +373,8 @@ public class SourceViewer {
 						imageIndicatorOverlay.setText("Could not render PDF");
 					});
 				}
-
-			}).start();
+			});
+			pdfRenderThread.start();
 		}
 
 		prefs.putInt(PAGE_PREF, pageNum);
