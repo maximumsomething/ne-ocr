@@ -10,7 +10,10 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.*;
-import javafx.scene.layout.*;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
@@ -23,10 +26,10 @@ import java.util.prefs.Preferences;
 
 public class ResultsViewer {
 	private Window window;
-	GridPane mainPane = new GridPane();
+	public GridPane mainPane = new GridPane();
 	private VBox resultsPane = new VBox(5);
 	private HBox selectionViewer = new HBox(3);
-	Button stopButton = new Button("Stop");
+	private Button stopButton = new Button("Stop");
 
 	private ToggleButton skeletonSettingsButton;
 	Slider dotSizeSlider, holeSizeSlider;
@@ -337,10 +340,12 @@ public class ResultsViewer {
 				//pageNumStr = thisResult.substring(0, results[i].indexOf(" - "));
 				pageNum = Integer.parseInt(thisResult.substring(5, thisResult.indexOf(" - ")));
 
-				// Page 178 is duplicated in the PDF
+				/*// Page 178 is duplicated in the PDF
 				int printOffset;
 				if (pageNum <= 216) printOffset = 36;
-				else printOffset = 37;
+				else printOffset = 37;*
+				 */
+				int printOffset = 36;
 				pageNumStr = String.format("Page %d (PDF), %d (Print)", pageNum, pageNum - printOffset);
 			}
 			catch (StringIndexOutOfBoundsException e) {
@@ -379,5 +384,9 @@ public class ResultsViewer {
 
 			resultsPane.getChildren().add(resultView);
 		}
+
+		// Needed due to bug in JavaFX. If this is not done, the resultsPane would be
+		// smaller than its contents until it is clicked.
+		Platform.runLater(() -> resultsPane.setPrefHeight(resultsPane.getHeight()));
 	}
 }
