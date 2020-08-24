@@ -10,15 +10,16 @@ Page = {};
 Rect = {};
 ImgName = {};
 
-parfor i = 1:numImages
+for i = 1:numImages
 	filename = list(i).name;
-	if numel(filename) >= 6 && strcmp(filename(1:5), 'Page ')
+	if numel(filename) >= 6 && strcmp(filename(1:5), 'Page ') ...
+			&& sscanf(filename, 'Page %d.jpg') >= 37
 		
 		fprintf('%s\n', filename);
 		[imgs, rects] = processPage([inputFolder,'/',filename]);
 		
 		for j = 1:numel(rects)
-			filenameParts = strsplit(filename, ',');
+			filenameParts = strsplit(filename, '.');
 			pageName = filenameParts{1};
 			
 			%Page{end+1, 1} = pageName;
@@ -66,10 +67,15 @@ function [characterImgs, characterBounds] = processPage(filePath)
 	% Each corresponds to pointRegion of the same index.
 	boundingRects = {}; 
 	
-	validMaxima = find(dist >= boldnessConstant * info.Width);
+	validPoints = find(dist >= boldnessConstant * info.Width);
+	if (numel(validPoints) > 200000) 
+		fprintf('Too many valid points (%d), using maxima instead\n', numel(validPoints));
+		dist(dist < boldnessConstant * info.Width) = 0;
+		validPoints = find(imregionalmax(dist));
+	end
 	
-	for i = 1:numel(validMaxima)
-		[y, x] = ind2sub(size(dist), validMaxima(i));
+	for i = 1:numel(validPoints)
+		[y, x] = ind2sub(size(dist), validPoints(i));
 		
 		foundRegion = false;
 		for j = 1:numel(boundingRects)

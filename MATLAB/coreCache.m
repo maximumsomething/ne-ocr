@@ -10,7 +10,10 @@ for i = 1:size(list)
 	if strcmp(extension, '.png')
 		img = imread([inDir, '/', filename]);
 		
-		core = scaleSkel(img, 2, 1, 16);
+		[y, x, ~]=size(img);
+		finishSize = sqrt(x^2 + y^2)*2;
+		
+		core = scaleSkel(img, finishSize, 1, 16);
 		if size(core) > 0
 			imwrite(core, [outDir, '/', filename], 'png');
 		else
