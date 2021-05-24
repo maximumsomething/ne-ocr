@@ -99,8 +99,8 @@ int main(int argc, char** argv) {
 	if (pathlessLoc == std::string::npos) pathless = argv[1];
 	else pathless = std::string(argv[1]).substr(pathlessLoc+1, std::string::npos);
 	
-	int pageNum, imgX, imgY, imgWidth, imgHeight;
-	sscanf(pathless.c_str(), "Page %d - %d,%d,%d,%d.png", &pageNum, &imgX, &imgY, &imgWidth, &imgHeight);
+	int pageNum, imgX, imgY, imgWidth, imgHeight, imgRefX, imgRefY;
+	sscanf(pathless.c_str(), "Page %d - loc%d,%d,%d,%d ref%d,%d.png", &pageNum, &imgX, &imgY, &imgWidth, &imgHeight, &imgRefX, &imgRefY);
 	
 	cv::Mat inImg = cv::imread(argv[1]);
 	cv::Mat grayImg;
@@ -176,7 +176,7 @@ int main(int argc, char** argv) {
 		
 		
 		char outFilename[512];
-		int out = snprintf(outFilename, 512, "%s/Page %d - %d,%d,%d,%d.png", argv[2], pageNum, imgX + leftCrop, imgY, rightCrop - leftCrop, imgHeight);
+		int out = snprintf(outFilename, 512, "%s/Page %d - loc%d,%d,%d,%d ref%d,%d.png", argv[2], pageNum, imgX + leftCrop, imgY, rightCrop - leftCrop, imgHeight, imgRefX, imgRefY);
 		assert(out <= 512);
 		
 		cv::imwrite(outFilename, cropImg);

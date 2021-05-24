@@ -14,6 +14,8 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
@@ -334,13 +336,13 @@ public class ResultsViewer {
 			if (image.getWidth() > resultsPane.getWidth()) imgView.fitWidthProperty().bind(resultsPane.widthProperty());
 
 			String thisResult = results[i];
+
 			String pageNumStr;
 			int pageNum;
 			try {
-				//pageNumStr = thisResult.substring(0, results[i].indexOf(" - "));
-				pageNum = Integer.parseInt(thisResult.substring(5, thisResult.indexOf(" - ")));
+				pageNum = Integer.parseInt(thisResult.substring(thisResult.indexOf("Page ") + 5, thisResult.indexOf(" - ")));
 
-				/*// Page 178 is duplicated in the PDF
+				/*//Page 178 is duplicated in the PDF
 				int printOffset;
 				if (pageNum <= 216) printOffset = 36;
 				else printOffset = 37;*
@@ -353,11 +355,27 @@ public class ResultsViewer {
 				continue;
 			}
 
-			Label label = new Label();
-			label.setText(pageNumStr);
+			Label pageLabel = new Label();
+			pageLabel.setText(pageNumStr);
+
+			Node below = pageLabel;
+
+			if (thisResult.startsWith("Alternates")) {
+				String refStr = thisResult.substring(thisResult.indexOf("Page "), thisResult.indexOf(" - ") + 3) + thisResult.substring(thisResult.indexOf("ref"));
+				Image refImg = new Image(new File(Main.programDir.getAbsolutePath() + File.separator + characterFolder +
+						File.separator + "Alternates Refs" + File.separator + refStr).toURI().toString());
+				ImageView refImgView = new ImageView(refImg);
+
+				refImgView.setPreserveRatio(true);
+				refImgView.setFitHeight(25);
+
+				TextFlow alternateLabel = new TextFlow(new Text("Alternate "), refImgView);
+
+				below = new VBox(alternateLabel, below);
+			}
 
 
-			Node below;
+
 			if (false) { // If showing database add button
 				Button confirmMatch = new Button("✓");
 				confirmMatch.setTooltip(confirmMatchTooltip);
@@ -367,12 +385,9 @@ public class ResultsViewer {
 				});
 
 				BorderPane belowPane = new BorderPane();
-				belowPane.setLeft(label);
+				belowPane.setLeft(below);
 				belowPane.setRight(confirmMatch);
 				below = belowPane;
-			}
-			else {
-				below = label;
 			}
 
 			VBox resultView = new VBox();

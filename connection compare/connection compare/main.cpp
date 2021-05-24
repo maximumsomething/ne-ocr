@@ -41,8 +41,7 @@ AllCompares getAllCompareChars(const char* path) {
 	std::vector<AnalyzedSkeleton> analyzedSkeletons;
 	std::vector<std::string> filenames;
 	
-	FILE* names = popen(("ls '"+ std::string(path) + "' | grep .png").c_str(), "r");
-	
+	FILE* names = popen(("cd '" + std::string(path) + "'; printf \"%s\n\" *.png Alternates/*.png").c_str(), "r");
 	
 	std::mutex outputLock;
 	
@@ -85,6 +84,11 @@ void doCompare(const char* coresDir, const char* skelFile, int visNum = 0) {
 	auto compareChars = getAllCompareChars(coresDir);
 	
 	AnalyzedSkeleton thisChar = getConnectionsFromFile(skelFile);
+	
+	if (thisChar.nomImgSize == -1) {
+		// unloadable image. getConnectionsFromFile should have already printed an error
+		exit(1);
+	}
 	
 	std::vector<CharPairScore> scores(compareChars.chars.size());
 	std::vector<int> scoreIndices(compareChars.chars.size());

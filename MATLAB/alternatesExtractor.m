@@ -1,5 +1,6 @@
 inputFolder = 'Working Files/Alternates Pages';
-outputFolder = 'Working Files/Alternates Blobs';
+blobsFolder = 'Working Files/Alternates Blobs';
+refsFolder = 'Extracted Characters/Alternates Refs';
 
 list = dir(inputFolder);
 
@@ -8,16 +9,16 @@ for i = 1:numImages
 	filename = list(i).name
 	if numel(filename) >= 6 && strcmp(filename(1:5), 'Page ')
 		pageNum = sscanf(filename, 'Page %d.jpg');
-		if pageNum < 751
-			continue
-		end
+		%if pageNum < 751
+		%	continue
+		%end
 		
 		processPage(imread([inputFolder,'/',filename]),...
-			sprintf('%s/Page %d', outputFolder, pageNum));
+			sprintf('%s/Page %d', blobsFolder, pageNum), sprintf('%s/Page %d', refsFolder, pageNum));
 	end
 end
 
-function processPage(fullPage, namePrefix)
+function processPage(fullPage, namePrefix, refNamePrefix)
 
 	BWPage = ~imbinarize(rgb2gray(fullPage));
 
@@ -27,11 +28,13 @@ function processPage(fullPage, namePrefix)
 	figure, imshow(imcrop(fullPage, rects(2, :)))
 	figure, imshow(imcrop(fullPage, rects(3, :)))
 %}
-	altRects = [
-		getAltRows(rects(1, :), BWPage);
-		getAltRows(rects(2, :), BWPage);
-		getAltRows(rects(3, :), BWPage)
-	];
+	altRects = [];
+	refRects = [];
+	for i = 1:3
+		[newAltRects, newRefRects] = getAltRows(rects(i, :), BWPage);
+		altRects = [altRects; newAltRects];
+		refRects = [refRects; newRefRects];
+	end
 
 	[numRects, ~] = size(altRects);
 
@@ -41,23 +44,50 @@ function processPage(fullPage, namePrefix)
 	end
 	
 	margin = 1;
+	marginBox = [-margin, -margin, margin*2, margin*2];
+	prevRefRect = [-1, -1, -1, -1];
 	for i = 1:numRects
-		cropRect = round(altRects(i, :)) + [-margin, -margin, margin*2, margin*2];
+		if refRects(i, 1) > 0
+			prevRefRect = round(refRects(i, :)) + marginBox;
+			imwrite(imcrop(fullPage, prevRefRect), ...
+				sprintf('%s - ref%d,%d.png', refNamePrefix, ...
+				prevRefRect(1), prevRefRect(2)));
+		end
+		cropRect = round(altRects(i, :)) + marginBox;
 		imwrite(imcrop(fullPage, cropRect), ...
-		sprintf('%s - %d,%d,%d,%d.png', namePrefix, ...
-		cropRect(1), cropRect(2), cropRect(3), cropRect(4)));
+			sprintf('%s - loc%d,%d,%d,%d ref%d,%d.png', namePrefix, ...
+			cropRect(1), cropRect(2), cropRect(3), cropRect(4), ...
+			prevRefRect(1), prevRefRect(2)));
 	end
 	
 end
 
-function altRects = getAltRows(columnBox, BWPage) 
+function [altRects, refRects] = getAltRows(columnBox, BWPage) 
 	
 	column = imcrop(BWPage, columnBox);
+	%{
+	cropOutAmount = 200;
+	columnMain = imcrop(BWPage, columnBox + [0, cropOutAmount, 0, -2*cropOutAmount]);
+	verticalEmpties = sum(columnMain, 1) == 0;
+	verticalEmpties = imerode(imdilate(verticalEmpties, ones(10)), ones(10));
+	colRegions = regionprops(verticalEmpties);
+	colBoxes1D = cat(1, colRegions.BoundingBox);
+	
+	dividingCols = colBoxes1D(colBoxes1D(:, 3) > 10, :);
+	dividingCols = dividingCols(dividingCols(:, 1) >= 1 & ... 
+		dividingCols(:, 1) + dividingCols(:, 3) < columnBox(3), :);
+	[n, ~] = size(dividingCols);
+	assert(n == 2);
+	colDividers = dividingCols(:, 1) + dividingCols(:, 3) / 2;
+	%}
 	
 	rowRegions = regionprops(sum(column, 2) > 0);
 	rowBoxes1D = cat(1, rowRegions.BoundingBox);
 	
+	assert(issorted(rowBoxes1D(:, 2)));
+	
 	altRects = zeros(numel(rowRegions), 4);
+	refRects = zeros(numel(rowRegions), 4) - 1;
 	
 	for i = 1:numel(rowRegions)
 		
@@ -68,16 +98,32 @@ function altRects = getAltRows(columnBox, BWPage)
 		blobRegions = regionprops(blobImg);
 		blobBoxes = cat(1, blobRegions.BoundingBox);
 		blobBoxes = blobBoxes(blobBoxes(:, 3) > 15 & blobBoxes(:, 4) > 15, :);
+		
 		[numBoxes, ~] = size(blobBoxes);
-		if numBoxes < 2
+		if numBoxes <= 1
 			continue
 		end
-		[~, rightBlobs] = sort(blobBoxes(:, 1), 'descend');
-		altRects(i, 1:4) = blobBoxes(rightBlobs(1), :);
-		altRects(i, 2) = altRects(i, 2) + rowBoxes1D(i, 2);
+		
+		[~, leftBlobs] = sort(blobBoxes(:, 1));
+		if blobBoxes(leftBlobs(1), 1) < 30
+			refRects(i, 1:4) = blobBoxes(leftBlobs(1), :)...
+				+ [0, rowBoxes1D(i, 2), 0, 0];
+			if numBoxes <= 2
+				continue
+			end
+		end
+		
+		altRects(i, 1:4) = blobBoxes(leftBlobs(end), :)...
+			+ [0, rowBoxes1D(i, 2), 0, 0];
 	end
-	altRects = altRects(altRects(:, 1) > 0 & altRects(:, 2) > 0, :);
+	goodAltFilter = altRects(:, 1) > 0 & altRects(:, 2) > 0;
+	altRects = altRects(goodAltFilter, :);
+	refRects = refRects(goodAltFilter, :);
+	
 	altRects(:, 1:2) = altRects(:, 1:2) + columnBox(1:2);
+	
+	goodRefsFilter = refRects(:, 1) > 0 & refRects(:, 2) > 0;
+	refRects(goodRefsFilter, 1:2) = refRects(goodRefsFilter, 1:2) + columnBox(1:2);
 	
 end
 
@@ -113,8 +159,8 @@ function rects = getColumns(BWPage)
 	top = min(dividers(1:2, 2));
 	height = max(dividers(1:2, 4)) + 10;
 	
-	centerBox = [dividers(1, 1) + dividers(1, 3) + margin, top,...
-		dividers(2, 1) - (dividers(1, 1) + dividers(1, 3) + margin*2), height];
+	%centerBox = [dividers(1, 1) + dividers(1, 3) + margin, top,...
+	%	dividers(2, 1) - (dividers(1, 1) + dividers(1, 3) + margin*2), height];
 	
 	
 	lesserCropRect = [100, 100, c - 200, r - 200];
@@ -127,7 +173,8 @@ function rects = getColumns(BWPage)
 	& edgedBoxes(:, 3) > 5 & edgedBoxes(:, 4) > 5, :);
 	
 	left = min(smalls(:, 1)) - margin;
-	right = max(smalls(:, 1) + smalls(:, 3)) + margin;
+	smallRights = smalls(:, 1) + smalls(:, 3);
+	right = max(smallRights) + margin;
 	
 	%{
 	[numSmalls, ~] = size(smalls);
@@ -140,6 +187,10 @@ function rects = getColumns(BWPage)
 	leftBox = [left, top, dividers(1, 1) - left - margin, height];
 	rightBox = [dividers(2, 1) + dividers(2, 3) + margin, top, ...
 		right - (dividers(2, 1) + dividers(2, 3) + margin), height];
+	
+	centerLeft = min(smalls(smalls(:, 1) > dividers(1, 1) + dividers(1, 3), 1));
+	centerRight = max(smallRights(smallRights < dividers(2, 1)));
+	centerBox = [centerLeft - margin, top, centerRight - centerLeft + margin*2, height];
 
 	rects = [leftBox; centerBox; rightBox];
 

@@ -4,4 +4,4 @@ sepAltExec=/Users/max/Library/Developer/Xcode/DerivedData/connection_compare-azg
 
 for I in "Working Files/Alternates Blobs/"*.png; do
 	$sepAltExec "$I" "Extracted Characters/Alternates"
-done
+done	
